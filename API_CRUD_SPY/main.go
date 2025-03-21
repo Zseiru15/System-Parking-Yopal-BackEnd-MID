@@ -1,7 +1,7 @@
 package main
 
 import (
-	_ "API_CRUD_SPY/routers"
+	_ "github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_CRUD_SPY/routers"
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/orm"
@@ -16,4 +16,3 @@ func main() {
 	}
 	beego.Run()
 }
-
