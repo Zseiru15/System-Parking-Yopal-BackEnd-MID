@@ -38,6 +38,57 @@ func (c *UsuariosController) Post() {
 // @router /:id [get]
 func (c *UsuariosController) GetOne() {
 
+	id_ingreso := c.Ctx.Input.Param(":id") // para capturar el parametro del url /id
+
+	//asignacion de datos al body
+	body, _ := services.Metodo_get("Servicio_Cartas", id_ingreso)
+	body2, _ := services.Metodo_get("Servicio_Usuarios", id_ingreso)
+
+	resultado1, _ := services.ProcesarJsonArreglos(body)
+	//----------------------------------------------------------------------------------------
+
+	//var result map[string]interface{}  // El JSON que esperas es un array de objetos
+	var result2 map[string]interface{} // El JSON que esperas es un array de objetos
+
+	//err = json.Unmarshal(body, &result)
+	//if err != nil {
+	//	log.Fatal("Error al parsear JSON:", err)
+	//}
+
+	err2 := json.Unmarshal(body2, &result2)
+	if err2 != nil {
+		log.Fatal("Error al parsear JSON:", err2)
+	}
+
+	//agregar un campo nuevo
+	for i := range resultado1 {
+		resultado1[i] = map[string]interface{}{
+			"Campo_nuevo": i + 1,
+			"body":        resultado1[i]["body"],
+		}
+	}
+
+	result2 = map[string]interface{}{
+		"direccion":          result2["address"],
+		"telefono":           result2["phone"],
+		"codigo_postal":      result2["address"].(map[string]interface{})["zipcode"],
+		"dirrecion_telefono": map[string]interface{}{"dirrecion": result2["address"], "telefono": result2["phone"]},
+	}
+
+	//------------------------------------------------
+
+	//Sacar una parte de un json del resultado 1
+	resultado := append(resultado1, result2)
+
+	//informacion de estado
+	//fmt.Println("La cantidad de datos son", len(resultado))
+	c.Data["json"] = map[string]interface{}{
+		"Succes":          true,
+		"Status":          200,
+		"Message":         "Consulta existosa",
+		"Data":            resultado,
+		"Cantidad Cartas": len(resultado)}
+	c.ServeJSON()
 }
 
 // GetAll ...
