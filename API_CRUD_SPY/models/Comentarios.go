@@ -11,14 +11,14 @@ import (
 )
 
 type Comentarios struct {
-	Id                  int               `orm:"column(Id_Comentarios);pk"`
+	Id                  int               `orm:"column(Id_Comentarios);pk;auto"`
 	IdUsuariosFk        *Usuarios         `orm:"column(Id_Usuarios_fk);rel(fk)"`
 	IdVehiculosFk       *Vehiculos        `orm:"column(Id_Vehiculos_fk);rel(fk)"`
 	IdEstacionamientoFk *Estacionamientos `orm:"column(Id_Estacionamiento_fk);rel(fk)"`
 	Comentario          string            `orm:"column(Comentario)"`
 	Calificacion        float64           `orm:"column(Calificacion)"`
-	FechaRegistro       time.Time         `orm:"column(Fecha_Registro);type(timestamp with time zone)"`
-	FechaModificacion   time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone)"`
+	FechaRegistro       time.Time         `orm:"column(Fecha_Registro);type(timestamp with time zone);auto_now_add"`
+	FechaModificacion   time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone);auto_now"`
 }
 
 func (t *Comentarios) TableName() string {

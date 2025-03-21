@@ -11,7 +11,7 @@ import (
 )
 
 type AdministradoresEmpleados struct {
-	Id                                  int               `orm:"column(Id_administradores);pk"`
+	Id                                  int               `orm:"column(Id_administradores);pk;auto"`
 	Nombres                             string            `orm:"column(Nombres)"`
 	Apellidos                           string            `orm:"column(Apellidos)"`
 	NumeroIdentificacionAdministradores string            `orm:"column(Numero_Identificacion_Administradores)"`
@@ -24,8 +24,8 @@ type AdministradoresEmpleados struct {
 	IdContraseñaFk                      *Credenciales     `orm:"column(Id_Contraseña_fk);rel(fk)"`
 	Estado                              bool              `orm:"column(Estado)"`
 	IdEstacionamientosFk                *Estacionamientos `orm:"column(Id_Estacionamientos_fk);rel(fk)"`
-	FechaRegistro                       time.Time         `orm:"column(Fecha_registro);type(timestamp with time zone)"`
-	FechaModificacion                   time.Time         `orm:"column(Fecha_modificacion);type(timestamp with time zone)"`
+	FechaRegistro                       time.Time         `orm:"column(Fecha_registro);type(timestamp with time zone);auto_now_add"`
+	FechaModificacion                   time.Time         `orm:"column(Fecha_modificacion);type(timestamp with time zone);auto_now"`
 }
 
 func (t *AdministradoresEmpleados) TableName() string {

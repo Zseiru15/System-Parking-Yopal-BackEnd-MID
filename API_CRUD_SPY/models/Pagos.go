@@ -11,14 +11,14 @@ import (
 )
 
 type Pagos struct {
-	Id                   int               `orm:"column(Id_Pagos);pk"`
+	Id                   int               `orm:"column(Id_Pagos);pk;auto"`
 	IdUsuariosFk         *Usuarios         `orm:"column(Id_Usuarios_fk);rel(fk)"`
 	IdEstacionamientosFk *Estacionamientos `orm:"column(Id_Estacionamientos_fk);rel(fk)"`
 	IdTipoPagosFk        *TipoPagos        `orm:"column(Id_Tipo_Pagos_fk);rel(fk)"`
 	ValorPago            string            `orm:"column(Valor_Pago)"`
-	Estado               bool              `orm:"column(Estado)"`
-	FechaRegistro        time.Time         `orm:"column(Fecha_Registro);type(timestamp with time zone)"`
-	FechaModificacion    time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone)"`
+	Estado               bool				`orm:"column(Estado)"`
+	FechaRegistro        time.Time         `orm:"column(Fecha_Registro);type(timestamp with time zone);auto_now_add"`
+	FechaModificacion    time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone);auto_now"`
 }
 
 func (t *Pagos) TableName() string {

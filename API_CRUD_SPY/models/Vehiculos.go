@@ -11,14 +11,14 @@ import (
 )
 
 type Vehiculos struct {
-	Id                int       `orm:"column(Id_vehiculos);pk"`
+	Id                int       `orm:"column(Id_vehiculos);pk;auto"`
 	Placa             string    `orm:"column(Placa)"`
 	Marca             string    `orm:"column(Marca)"`
 	Año               string    `orm:"column(Año)"`
 	IdUsuariosFk      *Usuarios `orm:"column(Id_usuarios_fk);rel(fk)"`
 	Estado            bool      `orm:"column(Estado)"`
-	FechaRegistro     time.Time `orm:"column(Fecha_Registro);type(timestamp with time zone)"`
-	FechaModificacion time.Time `orm:"column(Fecha_Modificacion);type(timestamp with time zone)"`
+	FechaRegistro     time.Time `orm:"column(Fecha_Registro);type(timestamp with time zone);auto_now_add"`
+	FechaModificacion time.Time `orm:"column(Fecha_Modificacion);type(timestamp with time zone);auto_now"`
 }
 
 func (t *Vehiculos) TableName() string {

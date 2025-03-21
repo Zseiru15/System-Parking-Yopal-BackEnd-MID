@@ -11,7 +11,7 @@ import (
 )
 
 type Slots struct {
-	Id                   int               `orm:"column(Id_slots);pk"`
+	Id                   int               `orm:"column(Id_slots);pk;auto"`
 	IdEstacionamientosFk *Estacionamientos `orm:"column(Id_estacionamientos_fk);rel(fk)"`
 	Largo                string            `orm:"column(Largo)"`
 	Ancho                string            `orm:"column(Ancho)"`
@@ -19,8 +19,8 @@ type Slots struct {
 	TipoEstacionamiento  string            `orm:"column(Tipo_estacionamiento)"`
 	Libre                bool              `orm:"column(Libre)"`
 	Estado               bool              `orm:"column(Estado)"`
-	FechaRegistro        time.Time         `orm:"column(Fecha_Registro);type(timestamp with time zone)"`
-	FechaModificacion    time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone)"`
+	FechaRegistro        time.Time         `orm:"column(Fecha_Registro);type(timestamp with time zone);auto_now_add"`
+	FechaModificacion    time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone);auto_now"`
 }
 
 func (t *Slots) TableName() string {

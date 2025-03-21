@@ -11,15 +11,15 @@ import (
 )
 
 type Promociones struct {
-	Id                   int               `orm:"column(Id_promociones);pk"`
+	Id                   int               `orm:"column(Id_promociones);pk;auto"`
 	IdEstacionamientosFk *Estacionamientos `orm:"column(Id_estacionamientos_fk);rel(fk)"`
 	IdSlotsFk            int               `orm:"column(Id_slots_fk)"`
 	ValorOriginal        string            `orm:"column(Valor_original)"`
 	Descuento            string            `orm:"column(Descuento)"`
 	ValorPromocion       string            `orm:"column(Valor_promocion)"`
 	Estado               bool              `orm:"column(Estado)"`
-	FechaInicio          time.Time         `orm:"column(Fecha_Inicio);type(timestamp with time zone)"`
-	FechaModificacion    time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone)"`
+	FechaInicio          time.Time         `orm:"column(Fecha_Inicio);type(timestamp with time zone);auto_now_add"`
+	FechaModificacion    time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone);auto_now"`
 	FechaFinal           time.Time         `orm:"column(Fecha_Final);type(timestamp with time zone)"`
 }
 

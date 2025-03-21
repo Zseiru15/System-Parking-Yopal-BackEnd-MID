@@ -11,11 +11,11 @@ import (
 )
 
 type AdministradoresEstacionamientos struct {
-	Id                   int                       `orm:"column(Id_Administradores_Estacionamientos);pk"`
+	Id                   int                       `orm:"column(Id_Administradores_Estacionamientos);pk;auto"`
 	IdAdministradoresFk  *AdministradoresEmpleados `orm:"column(Id_Administradores_fk);rel(fk)"`
 	IdEstacionamientosFk *Estacionamientos         `orm:"column(Id_Estacionamientos_fk);rel(fk)"`
-	FechaRegistro        time.Time                 `orm:"column(Fecha_Registro);type(timestamp with time zone)"`
-	FechaModificacion    time.Time                 `orm:"column(Fecha_Modificacion);type(timestamp with time zone)"`
+	FechaRegistro        time.Time                 `orm:"column(Fecha_Registro);type(timestamp with time zone);auto_now_add"`
+	FechaModificacion    time.Time                 `orm:"column(Fecha_Modificacion);type(timestamp with time zone);auto_now"`
 }
 
 func (t *AdministradoresEstacionamientos) TableName() string {

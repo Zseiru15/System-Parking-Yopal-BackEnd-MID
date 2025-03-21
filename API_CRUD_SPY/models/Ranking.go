@@ -11,11 +11,11 @@ import (
 )
 
 type Ranking struct {
-	Id                   int               `orm:"column(Id_ranking);pk"`
+	Id                   int               `orm:"column(Id_ranking);pk;auto"`
 	IdEstacionamientosFk *Estacionamientos `orm:"column(Id_estacionamientos_fk);rel(fk)"`
 	Posicion             float64           `orm:"column(Posicion)"`
-	FechaRegistro        time.Time         `orm:"column(Fecha_Registro);type(timestamp with time zone)"`
-	FechaModificacion    time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone)"`
+	FechaRegistro        time.Time         `orm:"column(Fecha_Registro);type(timestamp with time zone);auto_now_add"`
+	FechaModificacion    time.Time         `orm:"column(Fecha_Modificacion);type(timestamp with time zone);auto_now"`
 }
 
 func (t *Ranking) TableName() string {

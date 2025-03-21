@@ -11,7 +11,7 @@ import (
 )
 
 type Usuarios struct {
-	Id                           int           `orm:"column(Id_usuarios);pk"`
+	Id                           int           `orm:"column(Id_usuarios);pk;auto"`
 	Nombres                      string        `orm:"column(Nombres)"`
 	Apellidos                    string        `orm:"column(Apellidos)"`
 	NumeroIdentificacionUsuarios string        `orm:"column(Numero_Identificacion_Usuarios)"`
@@ -22,8 +22,8 @@ type Usuarios struct {
 	FechaNacimiento              time.Time     `orm:"column(Fecha_nacimiento);type(timestamp with time zone)"`
 	IdContrasenaFk               *Credenciales `orm:"column(Id_Contrasena_fk);rel(fk)"`
 	Estado                       bool          `orm:"column(Estado)"`
-	FechaRegistro                time.Time     `orm:"column(Fecha_Registro);type(timestamp with time zone)"`
-	FechaModificacion            time.Time     `orm:"column(Fecha_Modificacion);type(timestamp with time zone)"`
+	FechaRegistro                time.Time     `orm:"column(Fecha_Registro);type(timestamp with time zone);auto_now_add"`
+	FechaModificacion            time.Time     `orm:"column(Fecha_Modificacion);type(timestamp with time zone);auto_now"`
 	IdRolesFk                    *Roles        `orm:"column(Id_Roles_fk);rel(fk)"`
 }
 
