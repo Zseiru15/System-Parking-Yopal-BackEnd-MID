@@ -17,10 +17,11 @@ func init() {
 }
 
 type User struct {
-	Id       string
-	Username string
-	Password string
-	Profile  Profile
+	Id        string
+	Nombres   string `json:"Nombres"`
+	Apellidos string `json:"Apellidos"`
+	Password  string
+	Profile   Profile
 }
 
 type Profile struct {
@@ -49,8 +50,11 @@ func GetAllUsers() map[string]*User {
 
 func UpdateUser(uid string, uu *User) (a *User, err error) {
 	if u, ok := UserList[uid]; ok {
-		if uu.Username != "" {
-			u.Username = uu.Username
+		if uu.Nombres != "" {
+			u.Nombres = uu.Nombres
+		}
+		if uu.Apellidos != "" {
+			u.Apellidos = uu.Apellidos
 		}
 		if uu.Password != "" {
 			u.Password = uu.Password
@@ -83,4 +87,18 @@ func Login(username, password string) bool {
 
 func DeleteUser(uid string) {
 	delete(UserList, uid)
+}
+
+type Alert struct {
+	Type string
+	Code string
+	Body interface{}
+}
+
+// Response estructura genérica para respuestas del CRUD_SPY
+type Response struct {
+	Success bool        `json:"Success"`
+	Status  int         `json:"Status"`
+	Message string      `json:"Message"`
+	Data    interface{} `json:"Data"`
 }

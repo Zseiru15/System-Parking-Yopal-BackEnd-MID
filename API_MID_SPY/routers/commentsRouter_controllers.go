@@ -7,7 +7,7 @@ import (
 
 func init() {
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"],
         beego.ControllerComments{
             Method: "Post",
             Router: "/",
@@ -16,7 +16,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"],
         beego.ControllerComments{
             Method: "GetAll",
             Router: "/",
@@ -25,34 +25,34 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"],
         beego.ControllerComments{
-            Method: "Get",
-            Router: "/:objectId",
+            Method: "GetOne",
+            Router: "/:id",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"],
         beego.ControllerComments{
             Method: "Put",
-            Router: "/:objectId",
+            Router: "/:id",
             AllowHTTPMethods: []string{"put"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ObjectController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ComentariosController"],
         beego.ControllerComments{
             Method: "Delete",
-            Router: "/:objectId",
+            Router: "/:id",
             AllowHTTPMethods: []string{"delete"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"],
         beego.ControllerComments{
             Method: "Post",
             Router: "/",
@@ -61,7 +61,7 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"],
         beego.ControllerComments{
             Method: "GetAll",
             Router: "/",
@@ -70,47 +70,164 @@ func init() {
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"],
         beego.ControllerComments{
-            Method: "Get",
-            Router: "/:uid",
+            Method: "GetOne",
+            Router: "/:id",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"],
         beego.ControllerComments{
             Method: "Put",
-            Router: "/:uid",
+            Router: "/:id",
             AllowHTTPMethods: []string{"put"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:PagosController"],
         beego.ControllerComments{
             Method: "Delete",
-            Router: "/:uid",
+            Router: "/:id",
             AllowHTTPMethods: []string{"delete"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"],
         beego.ControllerComments{
-            Method: "Login",
-            Router: "/login",
+            Method: "Post",
+            Router: "/",
+            AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"],
+        beego.ControllerComments{
+            Method: "GetAll",
+            Router: "/",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})
 
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UserController"],
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"],
         beego.ControllerComments{
-            Method: "Logout",
-            Router: "/logout",
+            Method: "GetOne",
+            Router: "/:id",
             AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"],
+        beego.ControllerComments{
+            Method: "Put",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"put"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"],
+        beego.ControllerComments{
+            Method: "Delete",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"delete"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"],
+        beego.ControllerComments{
+            Method: "Post",
+            Router: "/",
+            AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"],
+        beego.ControllerComments{
+            Method: "GetAll",
+            Router: "/",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"],
+        beego.ControllerComments{
+            Method: "GetOne",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"],
+        beego.ControllerComments{
+            Method: "Put",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"put"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"],
+        beego.ControllerComments{
+            Method: "Delete",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"delete"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"],
+        beego.ControllerComments{
+            Method: "Post",
+            Router: "/",
+            AllowHTTPMethods: []string{"post"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"],
+        beego.ControllerComments{
+            Method: "GetAll",
+            Router: "/",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"],
+        beego.ControllerComments{
+            Method: "GetOne",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"],
+        beego.ControllerComments{
+            Method: "Put",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"put"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"],
+        beego.ControllerComments{
+            Method: "Delete",
+            Router: "/:id",
+            AllowHTTPMethods: []string{"delete"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})

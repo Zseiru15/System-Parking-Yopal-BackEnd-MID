@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"encoding/json"
+
 	"github.com/astaxie/beego"
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
 )
 
 // UsuariosController operations for Usuarios
@@ -26,7 +29,48 @@ func (c *UsuariosController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *UsuariosController) Post() {
+	var body_ingresa []map[string]interface{}
+	var alerta models.Alert
+	var temporal_usuario []byte
+	var temporal_producto []byte
 
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err == nil {
+		//fmt.Println("body que ingresa:", body_ingresa)
+
+		jsonData, err := json.MarshalIndent(body_ingresa, "", " ")
+		if err != nil {
+			fmt.Println("Error al convertir a JSON", err)
+		}
+
+		json_usuario := body_ingresa[0]
+		json_producto := body_ingresa[1]
+		//fmt.Println("Body usuario:", json_usuario)
+		//fmt.Println("Body producto:", json_producto)
+
+		json_usuario_byte, _ := json.Marshal(json_usuario)
+		response_usuario, _ := services.Metodo_post("Servicio_post", json_usuario_byte)
+
+		temporal_usuario = response_usuario
+
+		//fmt.Println("Esto responde el post de usuario:", string(response_usuario))
+		//fmt.Println("Esto respnde el post de producto:", string(response_producto))
+
+		fmt.Print("Body de ingreso en JSON:", string(jsonData))
+	}
+	var temporal_usuario2 map[string]interface{}
+	var temporal_producto2 map[string]interface{}
+
+	json.Unmarshal(temporal_usuario, &temporal_usuario2)
+	json.Unmarshal(temporal_producto, &temporal_producto2)
+	var body_final []map[string]interface{}
+	body_final = append(body_final, temporal_usuario2["data"].(map[string]interface{}))
+	body_final = append(body_final, temporal_producto2["data"].(map[string]interface{}))
+
+	alerta.Code = "201"
+	alerta.Type = "post"
+	alerta.Body = body_final
+	c.Data["json"] = alerta
+	c.ServeJSON()
 }
 
 // GetOne ...
@@ -37,74 +81,149 @@ func (c *UsuariosController) Post() {
 // @Failure 403 :id is empty
 // @router /:id [get]
 func (c *UsuariosController) GetOne() {
-
 	id_ingreso := c.Ctx.Input.Param(":id") // para capturar el parametro del url /id
-
-	//asignacion de datos al body
-	body, _ := services.Metodo_get("Servicio_Cartas", id_ingreso)
-	body2, _ := services.Metodo_get("Servicio_Usuarios", id_ingreso)
-
-	resultado1, _ := services.ProcesarJsonArreglos(body)
+	println("ese es el id: ", id_ingreso)
 	//----------------------------------------------------------------------------------------
-
-	//var result map[string]interface{}  // El JSON que esperas es un array de objetos
-	var result2 map[string]interface{} // El JSON que esperas es un array de objetos
-
-	//err = json.Unmarshal(body, &result)
-	//if err != nil {
-	//	log.Fatal("Error al parsear JSON:", err)
-	//}
-
-	err2 := json.Unmarshal(body2, &result2)
-	if err2 != nil {
-		log.Fatal("Error al parsear JSON:", err2)
-	}
-
-	//agregar un campo nuevo
-	for i := range resultado1 {
-		resultado1[i] = map[string]interface{}{
-			"Campo_nuevo": i + 1,
-			"body":        resultado1[i]["body"],
+	// println("PASO 1")
+	//asignacion de datos al body
+	// Obtener datos del usuario desde el servicio externo
+	body, err := services.Metodo_get("CRUD_SPY", "Usuarios", id_ingreso)
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener el usuario o el usuario no existe",
 		}
+		c.ServeJSON()
+		return
 	}
-
-	result2 = map[string]interface{}{
-		"direccion":          result2["address"],
-		"telefono":           result2["phone"],
-		"codigo_postal":      result2["address"].(map[string]interface{})["zipcode"],
-		"dirrecion_telefono": map[string]interface{}{"dirrecion": result2["address"], "telefono": result2["phone"]},
+	// println("PASO 1.1")
+	//----------------------------------------------------------------------------------------
+	// println("PASO 2")
+	// Decodificar JSON
+	var userData map[string]interface{}
+	if err := json.Unmarshal(body, &userData); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
 	}
+	// println("PASO 2.1")
+	// fmt.Println("Respuesta del servicio:", userData)
 
-	//------------------------------------------------
+	// Extraer y validar solo los datos necesarios
+	// El JSON que esperas es un array de objetos
+	usuario := map[string]interface{}{
+		"Nombres":              userData["data"].(map[string]interface{})["Nombres"],
+		"Apellidos":            userData["data"].(map[string]interface{})["Apellidos"],
+		"NumeroIdentificacion": userData["data"].(map[string]interface{})["NumeroIdentificacionUsuarios"],
+		"Edad":                 userData["data"].(map[string]interface{})["Edad"],
+		"Email":                userData["data"].(map[string]interface{})["Email"],
+		"Telefono":             userData["data"].(map[string]interface{})["Telefono"],
+		"Direccion":            userData["data"].(map[string]interface{})["Direccion"],
+		"IdRolesFk":            userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
+	}
+	// jsonData2, _ := json.MarshalIndent(usuario, "", "  ")
+	// println("PASO 2.2")
+	// println("Respuesta del servicio:", string(jsonData2))
 
-	//Sacar una parte de un json del resultado 1
-	resultado := append(resultado1, result2)
-
-	//informacion de estado
-	//fmt.Println("La cantidad de datos son", len(resultado))
+	//----------------------------------------------------------------------------------------
+	// println("PASO 3")
+	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"Succes":          true,
-		"Status":          200,
-		"Message":         "Consulta existosa",
-		"Data":            resultado,
-		"Cantidad Cartas": len(resultado)}
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    usuario,
+	}
+	// println("PASO 3.1")
 	c.ServeJSON()
 }
 
 // GetAll ...
 // @Title GetAll
-// @Description get Usuarios
-// @Param	query	query	string	false	"Filter. e.g. col1:v1,col2:v2 ..."
-// @Param	fields	query	string	false	"Fields returned. e.g. col1,col2 ..."
-// @Param	sortby	query	string	false	"Sorted-by fields. e.g. col1,col2 ..."
-// @Param	order	query	string	false	"Order corresponding to each sortby field, if single value, apply to all sortby fields. e.g. desc,asc ..."
-// @Param	limit	query	string	false	"Limit the size of result set. Must be an integer"
-// @Param	offset	query	string	false	"Start position of result set. Must be an integer"
-// @Success 200 {object} models.Usuarios
-// @Failure 403
+// @Description Obtiene todos los usuarios
+// @Success 200 {array} models.Usuarios
+// @Failure 500 Error interno del servidor
 // @router / [get]
 func (c *UsuariosController) GetAll() {
+	// Obtener todos los usuarios desde el servicio externo
+	body, err := services.Metodo_get("CRUD_SPY", "Usuarios", "")
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener los usuarios",
+		}
+		c.ServeJSON()
+		return
+	}
 
+	// Decodificar JSON
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Validar si "data" contiene usuarios
+	usersArray, ok := responseData["data"].([]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Estructura de datos incorrecta",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Procesar cada usuario en la lista
+	var usuarios []map[string]interface{}
+	for _, item := range usersArray {
+		user, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Validar y extraer `IdRolesFk` si existe
+		idRolesFk := 0
+		if idRoles, ok := user["IdRolesFk"].(map[string]interface{}); ok {
+			if id, ok := idRoles["Id"].(float64); ok {
+				idRolesFk = int(id)
+			}
+		}
+
+		// Agregar usuario procesado a la lista final
+		usuarios = append(usuarios, map[string]interface{}{
+			"Nombres":              user["Nombres"],
+			"Apellidos":            user["Apellidos"],
+			"NumeroIdentificacion": user["NumeroIdentificacionUsuarios"],
+			"Edad":                 user["Edad"],
+			"Email":                user["Email"],
+			"Telefono":             user["Telefono"],
+			"Direccion":            user["Direccion"],
+			"IdRolesFk":            idRolesFk,
+		})
+	}
+
+	// Respuesta JSON optimizada
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    usuarios,
+		"Total":   len(usuarios), // Indica cuántos usuarios se obtuvieron
+	}
+	c.ServeJSON()
 }
 
 // Put ...
