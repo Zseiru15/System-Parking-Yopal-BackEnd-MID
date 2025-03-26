@@ -40,8 +40,8 @@ func Metodo_get(nombre_servicio, endpoint, parametro string) ([]byte, error) {
 	return body, nil
 }
 
-func Metodo_post(nombre_servicio string, data []byte) ([]byte, error) {
-	url := beego.AppConfig.String(nombre_servicio)
+func Metodo_post(nombre_servicio, endpoint string, data []byte) ([]byte, error) {
+	url := beego.AppConfig.String(nombre_servicio) + endpoint // Construir la URL
 	response, err := http.Post(url, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
@@ -67,23 +67,52 @@ func ProcesarJson(datos []byte) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func Metodo_put(nombre_servicio string, id string, data []byte) ([]byte, error) {
-	//Obtener la URL base desde la configuracion de Beego
+func Metodo_put(nombre_servicio, endpoint, id string, data []byte) ([]byte, error) {
+	// Obtener la URL base desde la configuración de Beego
 	baseURL := beego.AppConfig.String(nombre_servicio)
 
-	//Construir la URL final con ID
-	url := fmt.Sprintf("%s/%s", baseURL, id)
+	// Construir la URL final con el endpoint y el ID
+	url := fmt.Sprintf("%s%s/%s", baseURL, endpoint, id)
 
-	//Crear la solicitud PUT
+	// Crear la solicitud PUT
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, fmt.Errorf("error creando la solicitud PUT: %w", err)
+	}
+
+	// Establecer el encabezado Content-Type
+	req.Header.Set("Content-Type", "application/json")
+
+	// Enviar la solicitud
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error al enviar la solicitud PUT: %w", err)
+	}
+	defer response.Body.Close()
+
+	// Leer la respuesta
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error al leer la respuesta del servidor: %w", err)
+	}
+
+	// Devolver la respuesta sin usar log.Fatal
+	return body, nil
+}
+
+
+func Metodo_delete(nombre_servicio, endpoint, parametro string) ([]byte, error) {
+	// Construir la URL de eliminación
+	url := beego.AppConfig.String(nombre_servicio) + endpoint + "/" + parametro
+
+	// Crear la solicitud DELETE
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	//Establecer el encabezado Content-Type
-	req.Header.Set("Content-Type", "application/json")
-
-	//Enviar la solicitud
+	// Enviar la solicitud
 	client := &http.Client{}
 	response, err := client.Do(req)
 	if err != nil {
@@ -91,7 +120,7 @@ func Metodo_put(nombre_servicio string, id string, data []byte) ([]byte, error) 
 	}
 	defer response.Body.Close()
 
-	//Leer la respuesta
+	// Leer la respuesta
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		log.Fatal(err)

@@ -12,23 +12,24 @@ var (
 
 func init() {
 	UserList = make(map[string]*User)
-	u := User{"user_11111", "astaxie", "11111", Profile{"male", 20, "Singapore", "astaxie@gmail.com"}}
+	u := User{"user_11111", "nombre_astaxie", "apellido_astaxie", "11111", Profile{"male", 20, "Singapore", "astaxie@gmail.com", 1}}
 	UserList["user_11111"] = &u
 }
 
 type User struct {
-	Id        string
-	Nombres   string `json:"Nombres"`
-	Apellidos string `json:"Apellidos"`
-	Password  string
-	Profile   Profile
+	Id         string
+	Nombres    string `json:"Nombres"`
+	Apellidos  string `json:"Apellidos"`
+	Contrasena string `json:"Contraseña"`
+	Profile    Profile
 }
 
 type Profile struct {
-	Gender  string
-	Age     int
-	Address string
-	Email   string
+	Genero    string `json:"Genero"`
+	Edad      int    `json:"Edad"`
+	Direccion string `json:"Direccion"`
+	Email     string `json:"Email"`
+	IdRolesFk int    `json:"IdRolesFk"`
 }
 
 func AddUser(u User) string {
@@ -56,17 +57,17 @@ func UpdateUser(uid string, uu *User) (a *User, err error) {
 		if uu.Apellidos != "" {
 			u.Apellidos = uu.Apellidos
 		}
-		if uu.Password != "" {
-			u.Password = uu.Password
+		if uu.Contrasena != "" {
+			u.Contrasena = uu.Contrasena
 		}
-		if uu.Profile.Age != 0 {
-			u.Profile.Age = uu.Profile.Age
+		if uu.Profile.Edad != 0 {
+			u.Profile.Edad = uu.Profile.Edad
 		}
-		if uu.Profile.Address != "" {
-			u.Profile.Address = uu.Profile.Address
+		if uu.Profile.Direccion != "" {
+			u.Profile.Direccion = uu.Profile.Direccion
 		}
-		if uu.Profile.Gender != "" {
-			u.Profile.Gender = uu.Profile.Gender
+		if uu.Profile.Genero != "" {
+			u.Profile.Genero = uu.Profile.Genero
 		}
 		if uu.Profile.Email != "" {
 			u.Profile.Email = uu.Profile.Email
@@ -78,7 +79,7 @@ func UpdateUser(uid string, uu *User) (a *User, err error) {
 
 func Login(username, password string) bool {
 	for _, u := range UserList {
-		if u.Username == username && u.Password == password {
+		if u.Nombres == username && u.Contrasena == password {
 			return true
 		}
 	}
@@ -89,16 +90,26 @@ func DeleteUser(uid string) {
 	delete(UserList, uid)
 }
 
+type UserRequest struct {
+    Nombres              string `json:"Nombres"`
+    Apellidos            string `json:"Apellidos"`
+    NumeroIdentificacion string `json:"NumeroIdentificacion"`
+    Edad                 int    `json:"Edad"`
+    Email                string `json:"Email"`
+    Telefono             int    `json:"Telefono"`
+    Direccion            string `json:"Direccion"`
+    IdRolesFk            struct {
+        Id     int    `json:"Id"`
+        Nombre string `json:"Nombre"`
+    } `json:"IdRolesFk"`
+    IdContrasenaFk struct {
+        Id int `json:"Id"`
+    } `json:"IdContrasenaFk"`
+    FechaNacimiento string `json:"Fecha_nacimiento"` // ✅ Debe ser un string
+}
+
 type Alert struct {
 	Type string
 	Code string
 	Body interface{}
-}
-
-// Response estructura genérica para respuestas del CRUD_SPY
-type Response struct {
-	Success bool        `json:"Success"`
-	Status  int         `json:"Status"`
-	Message string      `json:"Message"`
-	Data    interface{} `json:"Data"`
 }

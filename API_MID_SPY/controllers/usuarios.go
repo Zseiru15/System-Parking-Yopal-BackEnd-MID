@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
@@ -29,47 +30,78 @@ func (c *UsuariosController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *UsuariosController) Post() {
-	var body_ingresa []map[string]interface{}
-	var alerta models.Alert
-	var temporal_usuario []byte
-	var temporal_producto []byte
+	var body_ingresa map[string]interface{}
 
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err == nil {
-		//fmt.Println("body que ingresa:", body_ingresa)
-
-		jsonData, err := json.MarshalIndent(body_ingresa, "", " ")
-		if err != nil {
-			fmt.Println("Error al convertir a JSON", err)
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Error al procesar el cuerpo de la solicitud",
 		}
-
-		json_usuario := body_ingresa[0]
-		json_producto := body_ingresa[1]
-		//fmt.Println("Body usuario:", json_usuario)
-		//fmt.Println("Body producto:", json_producto)
-
-		json_usuario_byte, _ := json.Marshal(json_usuario)
-		response_usuario, _ := services.Metodo_post("Servicio_post", json_usuario_byte)
-
-		temporal_usuario = response_usuario
-
-		//fmt.Println("Esto responde el post de usuario:", string(response_usuario))
-		//fmt.Println("Esto respnde el post de producto:", string(response_producto))
-
-		fmt.Print("Body de ingreso en JSON:", string(jsonData))
+		c.ServeJSON()
+		return
 	}
+
+	// Convertir body_ingresa a JSON antes de enviarlo a Metodo_post
+	json_usuario_byte, err := json.Marshal(body_ingresa)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al convertir datos a JSON",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Llamar a Metodo_post para crear el usuario en CRUD_SPY
+	response_usuario, err := services.Metodo_post("CRUD_SPY", "Usuarios", json_usuario_byte)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al crear el usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Decodificar la respuesta del servicio
 	var temporal_usuario2 map[string]interface{}
-	var temporal_producto2 map[string]interface{}
+	if err := json.Unmarshal(response_usuario, &temporal_usuario2); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
 
-	json.Unmarshal(temporal_usuario, &temporal_usuario2)
-	json.Unmarshal(temporal_producto, &temporal_producto2)
-	var body_final []map[string]interface{}
-	body_final = append(body_final, temporal_usuario2["data"].(map[string]interface{}))
-	body_final = append(body_final, temporal_producto2["data"].(map[string]interface{}))
+	// 📌 IMPRIMIR LA RESPUESTA COMPLETA
+	fmt.Println("Respuesta del servidor CRUD_SPY:", temporal_usuario2)
 
-	alerta.Code = "201"
-	alerta.Type = "post"
-	alerta.Body = body_final
-	c.Data["json"] = alerta
+	// Validar si "data" está presente en la respuesta
+	data, ok := temporal_usuario2["data"].(map[string]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success":     false,
+			"Status":      500,
+			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
+			"RawResponse": temporal_usuario2, // 🔍 Incluir la respuesta completa para depuración
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Respuesta JSON optimizada
+	c.Data["json"] = map[string]interface{}{
+		"Succes":  true,
+		"Status":  201,
+		"type":    "post",
+		"Message": "Creacion existosa",
+		"Data":    data,
+	}
 	c.ServeJSON()
 }
 
@@ -82,7 +114,7 @@ func (c *UsuariosController) Post() {
 // @router /:id [get]
 func (c *UsuariosController) GetOne() {
 	id_ingreso := c.Ctx.Input.Param(":id") // para capturar el parametro del url /id
-	println("ese es el id: ", id_ingreso)
+	// println("ese es el id: ", id_ingreso)
 	//----------------------------------------------------------------------------------------
 	// println("PASO 1")
 	//asignacion de datos al body
@@ -227,24 +259,185 @@ func (c *UsuariosController) GetAll() {
 }
 
 // Put ...
-// @Title Put
-// @Description update the Usuarios
+// @Title Update
+// @Description update Usuarios
 // @Param	id		path 	string	true		"The id you want to update"
-// @Param	body		body 	models.Usuarios	true		"body for Usuarios content"
+// @Param	body	body 	models.Usuarios	true		"body for Usuarios content"
 // @Success 200 {object} models.Usuarios
-// @Failure 403 :id is not int
+// @Failure 400 Invalid ID
+// @Failure 500 Error updating user
 // @router /:id [put]
 func (c *UsuariosController) Put() {
+	id_ingreso := c.Ctx.Input.Param(":id") // Captura el ID desde la URL
 
+	// Decodificar el cuerpo de la solicitud
+	var body_actualizacion map[string]interface{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_actualizacion); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Error al procesar el cuerpo de la solicitud",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Convertir body_actualizacion a JSON antes de enviarlo a Metodo_put
+	json_usuario_byte, err := json.Marshal(body_actualizacion)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al convertir datos a JSON",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Llamar a Metodo_put para actualizar el usuario en CRUD_SPY
+	response_usuario, err := services.Metodo_put("CRUD_SPY", "Usuarios", id_ingreso, json_usuario_byte)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al actualizar el usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Decodificar la respuesta del servicio
+	var temporal_usuario map[string]interface{}
+	if err := json.Unmarshal(response_usuario, &temporal_usuario); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 📌 IMPRIMIR LA RESPUESTA COMPLETA
+	fmt.Println("Respuesta del servidor CRUD_SPY:", temporal_usuario)
+
+	// Validar si "data" está presente en la respuesta
+	data, ok := temporal_usuario["data"].(map[string]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success":     false,
+			"Status":      500,
+			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
+			"RawResponse": temporal_usuario, // 🔍 Incluir la respuesta completa para depuración
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Respuesta JSON optimizada
+	c.Data["json"] = map[string]interface{}{
+		"Succes":  true,
+		"Status":  200,
+		"type":    "put",
+		"Message": "Actualización exitosa",
+		"Data":    data,
+	}
+	c.ServeJSON()
 }
 
+
 // Delete ...
-// @Title Delete
-// @Description delete the Usuarios
-// @Param	id		path 	string	true		"The id you want to delete"
-// @Success 200 {string} delete success!
-// @Failure 403 id is empty
+// @Title Disable
+// @Description Cambia el estado de Usuarios a false en lugar de eliminarlo
+// @Param	id		path 	string	true		"The ID of the user to disable"
+// @Success 200 {string} Usuario deshabilitado exitosamente
+// @Failure 400 ID no válido
+// @Failure 404 Usuario no encontrado
+// @Failure 500 Error interno del servidor
 // @router /:id [delete]
 func (c *UsuariosController) Delete() {
+	id_ingreso := c.Ctx.Input.Param(":id") // Capturar ID de la URL
 
+	if id_ingreso == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "ID no proporcionado",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 📌 Obtener el usuario antes de modificarlo
+	get_inicial, err := services.Metodo_get("CRUD_SPY", "Usuarios", id_ingreso)
+	if err != nil || len(get_inicial) == 0 {
+		fmt.Println("Usuario no encontrado en el GET inicial.")
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  404,
+			"Message": "Usuario no encontrado",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Decodificar JSON recibido
+	var usuarioActual map[string]interface{}
+	if err := json.Unmarshal(get_inicial, &usuarioActual); err != nil {
+		fmt.Println("Error al procesar el usuario:", err)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar el usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 📌 Verificar que el usuario tiene la clave "Estado"
+	if _, ok := usuarioActual["data"].(map[string]interface{})["Estado"]; !ok {
+		fmt.Println("El usuario no tiene un campo 'Estado'.")
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "El usuario no tiene un campo 'Estado'.",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 📌 Crear JSON con la actualización del estado
+	json_nuevo := map[string]interface{}{
+		"Estado": false, // Solo cambiamos el estado a false
+	}
+
+	// Convertir a JSON
+	json_byte, _ := json.Marshal(json_nuevo)
+
+	// 📌 Imprimir JSON antes de enviarlo
+	fmt.Println("📤 JSON a enviar en PUT:", string(json_byte))
+
+	// Llamar a Metodo_put para actualizar el estado
+	response_put, err := services.Metodo_put("CRUD_SPY", "Usuarios", id_ingreso, json_byte)
+	if err != nil {
+		fmt.Println("Error en Metodo_put:", err)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al deshabilitar el usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 📌 Ver respuesta del CRUD_SPY
+	fmt.Println("Respuesta del CRUD_SPY al PUT:", string(response_put))
+
+	// Confirmar la actualización
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Usuario deshabilitado correctamente",
+	}
+	c.ServeJSON()
 }
