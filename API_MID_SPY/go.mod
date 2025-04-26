@@ -3,7 +3,6 @@ module github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY
 go 1.23.1
 
 require (
-	github.com/Zseiru15/System-Parking-Yopal-BackEnd-CRUD/API_CRUD_SPY v0.0.0-20250321210732-3cfc3572201f
 	github.com/astaxie/beego v1.12.3
 	github.com/smartystreets/goconvey v1.8.1
 )
@@ -16,7 +15,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.7.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.10.0 // indirect

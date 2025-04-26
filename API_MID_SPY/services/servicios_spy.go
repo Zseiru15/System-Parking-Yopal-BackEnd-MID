@@ -26,7 +26,7 @@ func ProcesarJsonArreglos(datos []byte) ([]map[string]interface{}, error) {
 
 // arreglar el orden de parametros seleccionados
 func Metodo_get(nombre_servicio, endpoint, parametro string) ([]byte, error) {
-	url := beego.AppConfig.String(nombre_servicio)+ endpoint +"/"+ parametro
+	url := beego.AppConfig.String(nombre_servicio) + endpoint + "/" + parametro
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,6 @@ func Metodo_put(nombre_servicio, endpoint, id string, data []byte) ([]byte, erro
 	// Devolver la respuesta sin usar log.Fatal
 	return body, nil
 }
-
 
 func Metodo_delete(nombre_servicio, endpoint, parametro string) ([]byte, error) {
 	// Construir la URL de eliminación
