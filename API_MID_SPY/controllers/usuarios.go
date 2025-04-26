@@ -151,12 +151,14 @@ func (c *UsuariosController) GetOne() {
 	usuario := map[string]interface{}{
 		"Nombres":              userData["data"].(map[string]interface{})["Nombres"],
 		"Apellidos":            userData["data"].(map[string]interface{})["Apellidos"],
+		"Usuario":              userData["data"].(map[string]interface{})["Usuario"],
 		"NumeroIdentificacion": userData["data"].(map[string]interface{})["NumeroIdentificacionUsuarios"],
 		"Edad":                 userData["data"].(map[string]interface{})["Edad"],
 		"Email":                userData["data"].(map[string]interface{})["Email"],
 		"Telefono":             userData["data"].(map[string]interface{})["Telefono"],
 		"Direccion":            userData["data"].(map[string]interface{})["Direccion"],
 		"IdRolesFk":            userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
+		"Imagen":              	userData["data"].(map[string]interface{})["Imagen"],
 	}
 	// jsonData2, _ := json.MarshalIndent(usuario, "", "  ")
 	// println("PASO 2.2")
@@ -238,12 +240,14 @@ func (c *UsuariosController) GetAll() {
 		usuarios = append(usuarios, map[string]interface{}{
 			"Nombres":              user["Nombres"],
 			"Apellidos":            user["Apellidos"],
+			"Usuario":              user["Usuario"],
 			"NumeroIdentificacion": user["NumeroIdentificacionUsuarios"],
 			"Edad":                 user["Edad"],
 			"Email":                user["Email"],
 			"Telefono":             user["Telefono"],
 			"Direccion":            user["Direccion"],
 			"IdRolesFk":            idRolesFk,
+			"Imagen":              	user["Imagen"],
 		})
 	}
 
