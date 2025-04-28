@@ -6,6 +6,10 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
+
+	"net/http"
+    "github.com/gin-gonic/gin"
+    "github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security" // importa donde tengas el jwt.go
 )
 
 // UsuariosController operations for Usuarios
@@ -444,4 +448,35 @@ func (c *UsuariosController) Delete() {
 		"Message": "Usuario deshabilitado correctamente",
 	}
 	c.ServeJSON()
+}
+
+func Login(c *gin.Context) {
+    var credentials struct {
+        Email    string `json:"email"`
+        Password string `json:"password"`
+    }
+
+    if err := c.ShouldBindJSON(&credentials); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Datos de entrada inválidos"})
+        return
+    }
+
+    // Aquí deberías consultar la base de datos para verificar el usuario y contraseña
+    user, err := BuscarUsuarioPorEmail(credentials.Email) // Te enseño esta función en un momento
+    if err != nil || user.Password != credentials.Password {
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales incorrectas"})
+        return
+    }
+
+    // Generar el token JWT
+    token, err := security.GenerateToken(user.ID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo generar el token"})
+        return
+    }
+
+    // Devolver el token
+    c.JSON(http.StatusOK, gin.H{
+        "token": token,
+    })
 }
