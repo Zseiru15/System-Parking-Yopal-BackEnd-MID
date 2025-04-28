@@ -114,17 +114,12 @@ type Alert struct {
 	Body interface{}
 }
 
-func BuscarUsuarioPorEmail(email string) (Usuario, error) {
-    var user Usuario
+type LoginRequest struct {
+	Usuario    string `json:"usuario"`
+	Contrasena string `json:"contrasena"`
+}
 
-    // Aquí deberías conectarte al API CRUD o base de datos para traer los datos del usuario
-    // Vamos a simularlo temporalmente:
-    if email == "admin@example.com" {
-        user.ID = 1
-        user.Email = "admin@example.com"
-        user.Password = "123456" // ⚠️ solo para pruebas, después vamos a encriptar
-        return user, nil
-    }
-
-    return user, errors.New("usuario no encontrado")
+type LoginResponse struct {
+	Token string                 `json:"token"`
+	User  map[string]interface{} `json:"user"`
 }

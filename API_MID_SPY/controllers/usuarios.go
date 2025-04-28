@@ -7,9 +7,9 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
 
+	"bytes"
+	"io/ioutil"
 	"net/http"
-    "github.com/gin-gonic/gin"
-    "github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security" // importa donde tengas el jwt.go
 )
 
 // UsuariosController operations for Usuarios
@@ -100,7 +100,7 @@ func (c *UsuariosController) Post() {
 
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"Succes":  true,
+		"Success":  true,
 		"Status":  201,
 		"type":    "post",
 		"Message": "Creacion existosa",
@@ -344,7 +344,7 @@ func (c *UsuariosController) Put() {
 
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"Succes":  true,
+		"Success":  true,
 		"Status":  200,
 		"type":    "put",
 		"Message": "Actualización exitosa",
@@ -450,33 +450,83 @@ func (c *UsuariosController) Delete() {
 	c.ServeJSON()
 }
 
-func Login(c *gin.Context) {
-    var credentials struct {
-        Email    string `json:"email"`
-        Password string `json:"password"`
-    }
+func (c *UsuariosController) Login() {
+	var loginData LoginRequest
 
-    if err := c.ShouldBindJSON(&credentials); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Datos de entrada inválidos"})
-        return
-    }
+	// Procesar el body
+	err := json.NewDecoder(c.Ctx.Request.Body).Decode(&loginData)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Datos inválidos en la solicitud",
+		}
+		c.ServeJSON()
+		return
+	}
 
-    // Aquí deberías consultar la base de datos para verificar el usuario y contraseña
-    user, err := BuscarUsuarioPorEmail(credentials.Email) // Te enseño esta función en un momento
-    if err != nil || user.Password != credentials.Password {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales incorrectas"})
-        return
-    }
+	// Consultar al API CRUD por el usuario
+	url := "http://localhost:8081/v1/usuarios?query=usuario:" + loginData.Usuario
 
-    // Generar el token JWT
-    token, err := security.GenerateToken(user.ID)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo generar el token"})
-        return
-    }
+	resp, err := http.Get(url)
+	if err != nil || resp.StatusCode != 200 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error buscando usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
 
-    // Devolver el token
-    c.JSON(http.StatusOK, gin.H{
-        "token": token,
-    })
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	var result map[string]interface{}
+	json.Unmarshal(body, &result)
+
+	users, ok := result["Data"].([]interface{})
+	if !ok || len(users) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  401,
+			"Message": "Usuario no encontrado",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Obtener el primer usuario encontrado
+	userData := users[0].(map[string]interface{})
+
+	// Validar contraseña
+	if loginData.Contrasena != userData["contrasena"].(string) {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  401,
+			"Message": "Contraseña incorrecta",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// TODO: Generar token JWT aquí
+	token := "TOKEN_EJEMPLO" // Esto lo vamos a cambiar luego
+
+	// Armar respuesta
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Login exitoso",
+		"Data": LoginResponse{
+			Token: token,
+			User: map[string]interface{}{
+				"id":    userData["id"],
+				"nombre": userData["nombre"],
+				"usuario": userData["usuario"],
+				"rol":    userData["rol"],
+			},
+		},
+	}
+	c.ServeJSON()
 }

@@ -40,6 +40,12 @@ func init() {
 				&controllers.VehiculosController{},
 			),
 		),
+		beego.Router("/v1/login", 
+			beego.NSInclude(
+				&controllers.UsuariosController{}, 
+		"post:Login"),
+		),
+
 	)
 	beego.AddNamespace(ns)
 }
