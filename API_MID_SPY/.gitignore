@@ -1,3 +1,33 @@
+# Binarios de Go
+*.exe
+*.test
+*.out
+
+# Dependencias
+vendor/
+
+# Archivos de configuración locales
+.env
+*.env
+
+# Cachés
+*.log
+*.tmp
+*.temp
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Archivos de compilación
+bin/
+build/
+
+# Archivos de control de versiones antiguos
+*.orig
+
+
 go.mod
 go.sun
-lastupdate.tmp
