@@ -14,6 +14,7 @@ import (
 )
 
 func init() {
+	
 	ns := beego.NewNamespace("/v1",
 		beego.NSNamespace("/comentarios",
 			beego.NSInclude(
@@ -40,11 +41,8 @@ func init() {
 				&controllers.VehiculosController{},
 			),
 		),
-		beego.Router("/v1/login", 
-			beego.NSInclude(
-				&controllers.UsuariosController{}, 
-		"post:Login"),
-		),
+		beego.NSRouter("/login",
+			&controllers.UsuariosController{}, "post:Login"),
 
 	)
 	beego.AddNamespace(ns)

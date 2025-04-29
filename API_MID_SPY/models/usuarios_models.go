@@ -115,11 +115,11 @@ type Alert struct {
 }
 
 type LoginRequest struct {
-	Usuario    string `json:"usuario"`
-	Contrasena string `json:"contrasena"`
+    Username string `json:"username"`
+    Password string `json:"password"`
 }
 
 type LoginResponse struct {
-	Token string                 `json:"token"`
-	User  map[string]interface{} `json:"user"`
+    Token string      `json:"token"`
+    User  interface{} `json:"user"`
 }

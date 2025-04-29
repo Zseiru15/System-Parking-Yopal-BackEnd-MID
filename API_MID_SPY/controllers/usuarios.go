@@ -7,9 +7,9 @@ import (
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
 
-	"bytes"
 	"io/ioutil"
 	"net/http"
+    "github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
 )
 
 // UsuariosController operations for Usuarios
@@ -33,6 +33,7 @@ func (c *UsuariosController) URLMapping() {
 // @Success 201 {object} models.Usuarios
 // @Failure 403 body is empty
 // @router / [post]
+// Post ...
 func (c *UsuariosController) Post() {
 	var body_ingresa map[string]interface{}
 
@@ -45,6 +46,33 @@ func (c *UsuariosController) Post() {
 		c.ServeJSON()
 		return
 	}
+
+	// Obtener la contraseña del body
+	contrasena, ok := body_ingresa["Contrasena"].(string)
+	if !ok || contrasena == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "La contraseña es requerida",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Hashear la contraseña
+	hashedPassword, err := security.HashPassword(contrasena)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al hashear la contraseña",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Reemplazar la contraseña en texto plano con el hash
+	body_ingresa["Contrasena"] = hashedPassword
 
 	// Convertir body_ingresa a JSON antes de enviarlo a Metodo_post
 	json_usuario_byte, err := json.Marshal(body_ingresa)
@@ -82,8 +110,8 @@ func (c *UsuariosController) Post() {
 		return
 	}
 
-	// 📌 IMPRIMIR LA RESPUESTA COMPLETA
-	fmt.Println("Respuesta del servidor CRUD_SPY:", temporal_usuario2)
+	// Imprimir la respuesta completa (para depuración)
+	fmt.Println("Respuesta del servidor CRUD_SPY (Post):", temporal_usuario2)
 
 	// Validar si "data" está presente en la respuesta
 	data, ok := temporal_usuario2["data"].(map[string]interface{})
@@ -92,7 +120,7 @@ func (c *UsuariosController) Post() {
 			"Success":     false,
 			"Status":      500,
 			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
-			"RawResponse": temporal_usuario2, // 🔍 Incluir la respuesta completa para depuración
+			"RawResponse": temporal_usuario2,
 		}
 		c.ServeJSON()
 		return
@@ -100,10 +128,10 @@ func (c *UsuariosController) Post() {
 
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"Success":  true,
+		"Success": true,
 		"Status":  201,
 		"type":    "post",
-		"Message": "Creacion existosa",
+		"Message": "Creacion exitosa",
 		"Data":    data,
 	}
 	c.ServeJSON()
@@ -451,10 +479,10 @@ func (c *UsuariosController) Delete() {
 }
 
 func (c *UsuariosController) Login() {
-	var loginData LoginRequest
+	var loginData map[string]interface{}
 
-	// Procesar el body
-	err := json.NewDecoder(c.Ctx.Request.Body).Decode(&loginData)
+	// Procesar el body de la solicitud
+	err := json.Unmarshal(c.Ctx.Input.RequestBody, &loginData)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -465,8 +493,30 @@ func (c *UsuariosController) Login() {
 		return
 	}
 
+	usuario, ok := loginData["Usuario"].(string)
+	if !ok || usuario == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "El campo 'Usuario' es requerido",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	contrasena, ok := loginData["Contrasena"].(string)
+	if !ok || contrasena == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "El campo 'Contrasena' es requerido",
+		}
+		c.ServeJSON()
+		return
+	}
+
 	// Consultar al API CRUD por el usuario
-	url := "http://localhost:8081/v1/usuarios?query=usuario:" + loginData.Usuario
+	url := fmt.Sprintf("http://localhost:8081/v1/Usuarios?query=Usuario:%s", usuario)
 
 	resp, err := http.Get(url)
 	if err != nil || resp.StatusCode != 200 {
@@ -499,8 +549,20 @@ func (c *UsuariosController) Login() {
 	// Obtener el primer usuario encontrado
 	userData := users[0].(map[string]interface{})
 
-	// Validar contraseña
-	if loginData.Contrasena != userData["contrasena"].(string) {
+	// Obtener la contraseña hasheada de userData
+	hashedPasswordFromDB, ok := userData["Contrasena"].(string)
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener la contraseña del usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Validar la contraseña utilizando la función de hashing
+	if !security.CheckPasswordHash(contrasena, hashedPasswordFromDB) {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
 			"Status":  401,
@@ -510,21 +572,42 @@ func (c *UsuariosController) Login() {
 		return
 	}
 
-	// TODO: Generar token JWT aquí
-	token := "TOKEN_EJEMPLO" // Esto lo vamos a cambiar luego
+	// Generar token JWT
+	userIDFloat, ok := userData["Id"].(float64)
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener el ID del usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+	userID := int(userIDFloat)
+
+	token, err := security.GenerateToken(userID)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al generar el token JWT",
+		}
+		c.ServeJSON()
+		return
+	}
 
 	// Armar respuesta
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  200,
 		"Message": "Login exitoso",
-		"Data": LoginResponse{
-			Token: token,
-			User: map[string]interface{}{
-				"id":    userData["id"],
-				"nombre": userData["nombre"],
-				"usuario": userData["usuario"],
-				"rol":    userData["rol"],
+		"Data": map[string]interface{}{
+			"token": token,
+			"user": map[string]interface{}{
+				"id":      userData["Id"],
+				"nombres": userData["Nombres"],
+				"usuario": userData["Usuario"],
+				// Incluye aquí otros datos del usuario que quieras enviar
 			},
 		},
 	}

@@ -4,6 +4,7 @@ import (
 	"time"
 	"errors"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var jwtKey = []byte("mi_clave_secreta_super_segura") // Luego podemos moverla a variables de entorno
@@ -50,4 +51,16 @@ func ValidateToken(tokenString string) (*Claims, error) {
 	}
 
 	return claims, nil
+}
+
+// HashPassword hashea la contraseña proporcionada
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
+}
+
+// CheckPasswordHash compara la contraseña proporcionada con el hash almacenado
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
