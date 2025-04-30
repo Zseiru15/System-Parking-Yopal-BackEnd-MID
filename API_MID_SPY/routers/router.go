@@ -16,34 +16,36 @@ import (
 func init() {
 	
 	ns := beego.NewNamespace("/v1",
-		beego.NSNamespace("/comentarios",
-			beego.NSInclude(
-				&controllers.ComentariosController{},
-			),
+	beego.NSNamespace("/comentarios",
+		beego.NSInclude(
+			&controllers.ComentariosController{},
 		),
-		beego.NSNamespace("/pagos",
-			beego.NSInclude(
-				&controllers.PagosController{},
-			),
+	),
+	beego.NSNamespace("/pagos",
+		beego.NSInclude(
+			&controllers.PagosController{},
 		),
-		beego.NSNamespace("/parqueaderos",
-			beego.NSInclude(
-				&controllers.ParqueaderosController{},
-			),
+	),
+	beego.NSNamespace("/parqueaderos",
+		beego.NSInclude(
+			&controllers.ParqueaderosController{},
 		),
-		beego.NSNamespace("/usuarios",
-			beego.NSInclude(
-				&controllers.UsuariosController{},
-			),
+	),
+	beego.NSNamespace("/usuarios",
+		beego.NSInclude(
+			&controllers.UsuariosController{},
 		),
-		beego.NSNamespace("/vehiculos",
-			beego.NSInclude(
-				&controllers.VehiculosController{},
-			),
+	),
+	beego.NSNamespace("/vehiculos",
+		beego.NSInclude(
+			&controllers.VehiculosController{},
 		),
-		beego.NSRouter("/login",
-			&controllers.UsuariosController{}, "post:Login"),
+	),
+	beego.NSNamespace("/auth",
+		beego.NSRouter("/login", &controllers.AuthController{}, "post:Login"),
+		beego.NSRouter("/register", &controllers.AuthController{}, "post:Register"),
+	),
+)
 
-	)
-	beego.AddNamespace(ns)
+beego.AddNamespace(ns)
 }

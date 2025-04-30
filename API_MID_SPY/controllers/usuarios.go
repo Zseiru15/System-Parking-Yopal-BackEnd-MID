@@ -6,10 +6,6 @@ import (
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
-
-	"io/ioutil"
-	"net/http"
-    "github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
 )
 
 // UsuariosController operations for Usuarios
@@ -33,10 +29,8 @@ func (c *UsuariosController) URLMapping() {
 // @Success 201 {object} models.Usuarios
 // @Failure 403 body is empty
 // @router / [post]
-// Post ...
 func (c *UsuariosController) Post() {
 	var body_ingresa map[string]interface{}
-
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -46,33 +40,6 @@ func (c *UsuariosController) Post() {
 		c.ServeJSON()
 		return
 	}
-
-	// Obtener la contraseña del body
-	contrasena, ok := body_ingresa["Contrasena"].(string)
-	if !ok || contrasena == "" {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "La contraseña es requerida",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Hashear la contraseña
-	hashedPassword, err := security.HashPassword(contrasena)
-	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al hashear la contraseña",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Reemplazar la contraseña en texto plano con el hash
-	body_ingresa["Contrasena"] = hashedPassword
 
 	// Convertir body_ingresa a JSON antes de enviarlo a Metodo_post
 	json_usuario_byte, err := json.Marshal(body_ingresa)
@@ -110,8 +77,8 @@ func (c *UsuariosController) Post() {
 		return
 	}
 
-	// Imprimir la respuesta completa (para depuración)
-	fmt.Println("Respuesta del servidor CRUD_SPY (Post):", temporal_usuario2)
+	// 📌 IMPRIMIR LA RESPUESTA COMPLETA
+	fmt.Println("Respuesta del servidor CRUD_SPY:", temporal_usuario2)
 
 	// Validar si "data" está presente en la respuesta
 	data, ok := temporal_usuario2["data"].(map[string]interface{})
@@ -120,7 +87,7 @@ func (c *UsuariosController) Post() {
 			"Success":     false,
 			"Status":      500,
 			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
-			"RawResponse": temporal_usuario2,
+			"RawResponse": temporal_usuario2, // 🔍 Incluir la respuesta completa para depuración
 		}
 		c.ServeJSON()
 		return
@@ -128,12 +95,13 @@ func (c *UsuariosController) Post() {
 
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"Success": true,
+		"Succes":  true,
 		"Status":  201,
 		"type":    "post",
-		"Message": "Creacion exitosa",
+		"Message": "Creacion existosa",
 		"Data":    data,
 	}
+
 	c.ServeJSON()
 }
 
@@ -183,14 +151,12 @@ func (c *UsuariosController) GetOne() {
 	usuario := map[string]interface{}{
 		"Nombres":              userData["data"].(map[string]interface{})["Nombres"],
 		"Apellidos":            userData["data"].(map[string]interface{})["Apellidos"],
-		"Usuario":              userData["data"].(map[string]interface{})["Usuario"],
 		"NumeroIdentificacion": userData["data"].(map[string]interface{})["NumeroIdentificacionUsuarios"],
 		"Edad":                 userData["data"].(map[string]interface{})["Edad"],
 		"Email":                userData["data"].(map[string]interface{})["Email"],
 		"Telefono":             userData["data"].(map[string]interface{})["Telefono"],
 		"Direccion":            userData["data"].(map[string]interface{})["Direccion"],
 		"IdRolesFk":            userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
-		"Imagen":              	userData["data"].(map[string]interface{})["Imagen"],
 	}
 	// jsonData2, _ := json.MarshalIndent(usuario, "", "  ")
 	// println("PASO 2.2")
@@ -272,14 +238,12 @@ func (c *UsuariosController) GetAll() {
 		usuarios = append(usuarios, map[string]interface{}{
 			"Nombres":              user["Nombres"],
 			"Apellidos":            user["Apellidos"],
-			"Usuario":              user["Usuario"],
 			"NumeroIdentificacion": user["NumeroIdentificacionUsuarios"],
 			"Edad":                 user["Edad"],
 			"Email":                user["Email"],
 			"Telefono":             user["Telefono"],
 			"Direccion":            user["Direccion"],
 			"IdRolesFk":            idRolesFk,
-			"Imagen":              	user["Imagen"],
 		})
 	}
 
@@ -372,7 +336,7 @@ func (c *UsuariosController) Put() {
 
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"Success":  true,
+		"Succes":  true,
 		"Status":  200,
 		"type":    "put",
 		"Message": "Actualización exitosa",
@@ -474,142 +438,6 @@ func (c *UsuariosController) Delete() {
 		"Success": true,
 		"Status":  200,
 		"Message": "Usuario deshabilitado correctamente",
-	}
-	c.ServeJSON()
-}
-
-func (c *UsuariosController) Login() {
-	var loginData map[string]interface{}
-
-	// Procesar el body de la solicitud
-	err := json.Unmarshal(c.Ctx.Input.RequestBody, &loginData)
-	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Datos inválidos en la solicitud",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	usuario, ok := loginData["Usuario"].(string)
-	if !ok || usuario == "" {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El campo 'Usuario' es requerido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	contrasena, ok := loginData["Contrasena"].(string)
-	if !ok || contrasena == "" {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "El campo 'Contrasena' es requerido",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Consultar al API CRUD por el usuario
-	url := fmt.Sprintf("http://localhost:8081/v1/Usuarios?query=Usuario:%s", usuario)
-
-	resp, err := http.Get(url)
-	if err != nil || resp.StatusCode != 200 {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error buscando usuario",
-		}
-		c.ServeJSON()
-		return
-	}
-	defer resp.Body.Close()
-
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	var result map[string]interface{}
-	json.Unmarshal(body, &result)
-
-	users, ok := result["Data"].([]interface{})
-	if !ok || len(users) == 0 {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  401,
-			"Message": "Usuario no encontrado",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Obtener el primer usuario encontrado
-	userData := users[0].(map[string]interface{})
-
-	// Obtener la contraseña hasheada de userData
-	hashedPasswordFromDB, ok := userData["Contrasena"].(string)
-	if !ok {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al obtener la contraseña del usuario",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Validar la contraseña utilizando la función de hashing
-	if !security.CheckPasswordHash(contrasena, hashedPasswordFromDB) {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  401,
-			"Message": "Contraseña incorrecta",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Generar token JWT
-	userIDFloat, ok := userData["Id"].(float64)
-	if !ok {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al obtener el ID del usuario",
-		}
-		c.ServeJSON()
-		return
-	}
-	userID := int(userIDFloat)
-
-	token, err := security.GenerateToken(userID)
-	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al generar el token JWT",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Armar respuesta
-	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  200,
-		"Message": "Login exitoso",
-		"Data": map[string]interface{}{
-			"token": token,
-			"user": map[string]interface{}{
-				"id":      userData["Id"],
-				"nombres": userData["Nombres"],
-				"usuario": userData["Usuario"],
-				// Incluye aquí otros datos del usuario que quieras enviar
-			},
-		},
 	}
 	c.ServeJSON()
 }
