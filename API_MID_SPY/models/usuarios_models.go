@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strconv"
 	"time"
+
+	"github.com/astaxie/beego/orm"
 )
 
 var (
@@ -91,21 +93,21 @@ func DeleteUser(uid string) {
 }
 
 type UserRequest struct {
-    Nombres              string `json:"Nombres"`
-    Apellidos            string `json:"Apellidos"`
-    NumeroIdentificacion string `json:"NumeroIdentificacion"`
-    Edad                 int    `json:"Edad"`
-    Email                string `json:"Email"`
-    Telefono             int    `json:"Telefono"`
-    Direccion            string `json:"Direccion"`
-    IdRolesFk            struct {
-        Id     int    `json:"Id"`
-        Nombre string `json:"Nombre"`
-    } `json:"IdRolesFk"`
-    IdContrasenaFk struct {
-        Id int `json:"Id"`
-    } `json:"IdContrasenaFk"`
-    FechaNacimiento string `json:"Fecha_nacimiento"` // ✅ Debe ser un string
+	Nombres              string `json:"Nombres"`
+	Apellidos            string `json:"Apellidos"`
+	NumeroIdentificacion string `json:"NumeroIdentificacion"`
+	Edad                 int    `json:"Edad"`
+	Email                string `json:"Email"`
+	Telefono             int    `json:"Telefono"`
+	Direccion            string `json:"Direccion"`
+	IdRolesFk            struct {
+		Id     int    `json:"Id"`
+		Nombre string `json:"Nombre"`
+	} `json:"IdRolesFk"`
+	IdContrasenaFk struct {
+		Id int `json:"Id"`
+	} `json:"IdContrasenaFk"`
+	FechaNacimiento string `json:"Fecha_nacimiento"` // ✅ Debe ser un string
 }
 
 type Alert struct {
@@ -115,11 +117,31 @@ type Alert struct {
 }
 
 type LoginRequest struct {
-    Username string `json:"username"`
-    Password string `json:"password"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type LoginResponse struct {
-    Token string      `json:"token"`
-    User  interface{} `json:"user"`
+	Token string      `json:"token"`
+	User  interface{} `json:"user"`
+}
+
+type Usuarios struct {
+	Id                   int    `orm:"auto" json:"id"`
+	Nombres              string `json:"Nombres"`
+	Apellidos            string `json:"Apellidos"`
+	NumeroIdentificacion string `json:"NumeroIdentificacion"`
+	Email                string `json:"Email"`
+	Contrasena           string `json:"Contrasena"`
+	FechaNacimiento      string `json:"fecha_nacimiento"`
+	Genero               string `json:"genero"`
+	Rol                  string `json:"rol"`
+}
+
+func (u *Usuarios) TableName() string {
+	return "Usuarios"
+}
+
+func init() {
+	orm.RegisterModel(new(Usuarios))
 }

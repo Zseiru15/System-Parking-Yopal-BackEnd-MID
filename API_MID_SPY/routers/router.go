@@ -8,13 +8,11 @@
 package routers
 
 import (
-	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers"
-
 	"github.com/astaxie/beego"
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers"
 )
 
 func init() {
-	
 	ns := beego.NewNamespace("/v1",
 	beego.NSNamespace("/comentarios",
 		beego.NSInclude(

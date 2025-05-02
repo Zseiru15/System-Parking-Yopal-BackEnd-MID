@@ -1,9 +1,12 @@
 package controllers
 
 import (
-	"encoding/json"
-	"github.com/astaxie/beego"
-	"net/http"
+    "github.com/astaxie/beego"
+    "github.com/astaxie/beego/orm"
+	"golang.org/x/crypto/bcrypt"
+    "encoding/json"
+
+    "github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/models"
 )
 
 // AuthController operations for Auth
@@ -29,34 +32,38 @@ func (c *AuthController) URLMapping() {
 // @Success 200 {object} map[string]string
 // @Failure 400 el cuerpo es inválido
 // @router /login [post]
+// POST /auth/login
 func (c *AuthController) Login() {
-	var credentials map[string]string
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &credentials); err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": "Solicitud inválida"}
-		c.ServeJSON()
+	var reqUsuario models.Usuarios
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &reqUsuario); err != nil {
+		c.CustomAbort(400, "Datos inválidos")
 		return
 	}
 
-	email := credentials["Email"]
-	password := credentials["password"]
-
-	// Aquí iría la validación real con base de datos
-	if email == "admin@example.com" && password == "123456" {
-		c.Data["json"] = map[string]string{"message": "Login exitoso"}
-	} else {
-		c.Ctx.Output.SetStatus(http.StatusUnauthorized)
-		c.Data["json"] = map[string]string{"error": "Credenciales inválidas"}
+	// Buscar usuario por email
+	o := orm.NewOrm()
+	var usuario models.Usuarios
+	err := o.QueryTable("usuario").Filter("Email", reqUsuario.Email).One(&usuario)
+	if err == orm.ErrNoRows {
+		c.CustomAbort(401, "Correo o contraseña incorrectos")
+		return
 	}
+
+	// Verificar contraseña
+	err = bcrypt.CompareHashAndPassword([]byte(usuario.Contrasena), []byte(reqUsuario.Contrasena))
+	if err != nil {
+		c.CustomAbort(401, "Correo o contraseña incorrectos")
+		return
+	}
+
 	c.Data["json"] = map[string]interface{}{
-		"Success": true,
-		"Status":  201,
-		"type":    "post",
-		"Message": "Creacion exitosa",
-		"Data":    c.Data,
+		"message": "Inicio de sesión exitoso",
+		"user":    usuario,
 	}
 	c.ServeJSON()
 }
+
+
 
 // Register maneja el registro de usuario
 // @Title Register
@@ -66,20 +73,39 @@ func (c *AuthController) Login() {
 // @Failure 400 si los datos son inválidos
 // @router /register [post]
 func (c *AuthController) Register() {
-	var user map[string]string
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &user); err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.Data["json"] = map[string]string{"error": "Datos inválidos"}
-		c.ServeJSON()
+	var usuario models.Usuarios
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &usuario); err != nil {
+		c.CustomAbort(400, "Datos inválidos")
 		return
 	}
 
-	// Aquí deberías guardar el usuario en la BD (esta es solo una simulación)
-	c.Ctx.Output.SetStatus(http.StatusCreated)
+	// Validar que no exista otro usuario con el mismo email o número de identificación
+	o := orm.NewOrm()
+	exists := models.Usuarios{}
+	err := o.QueryTable("usuarios").Filter("Email", usuario.Email).One(&exists)
+	if err == nil {
+		c.CustomAbort(400, "El email ya está registrado")
+		return
+	}
+
+	// Encriptar la contraseña
+	hash, err := bcrypt.GenerateFromPassword([]byte(usuario.Contrasena), bcrypt.DefaultCost)
+	if err != nil {
+		c.CustomAbort(500, "Error encriptando contraseña")
+		return
+	}
+	usuario.Contrasena = string(hash)
+
+	// Insertar en la base de datos
+	_, err = o.Insert(&usuario)
+	if err != nil {
+		c.CustomAbort(500, "Error guardando el usuario")
+		return
+	}
+
 	c.Data["json"] = map[string]string{"message": "Usuario registrado exitosamente"}
 	c.ServeJSON()
 }
-
 
 // Post ...
 // @Title Create
