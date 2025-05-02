@@ -127,15 +127,28 @@ type LoginResponse struct {
 }
 
 type Usuarios struct {
-	Id                   int    `orm:"auto" json:"id"`
-	Nombres              string `json:"Nombres"`
-	Apellidos            string `json:"Apellidos"`
-	NumeroIdentificacion string `json:"NumeroIdentificacion"`
-	Email                string `json:"Email"`
-	Contrasena           string `json:"Contrasena"`
-	FechaNacimiento      string `json:"fecha_nacimiento"`
-	Genero               string `json:"genero"`
-	Rol                  string `json:"rol"`
+    IdUsuarios      int       `orm:"column(Id_usuarios);pk;auto"`
+    Nombres         string    `orm:"column(Nombres);size(100)"`
+    Apellidos       string    `orm:"column(Apellidos);size(100)"`
+    NumeroIdentifi  string    `orm:"column(Numero_Identificacion_Usuarios);size(50)"`
+    Email           string    `orm:"column(Email);size(100);unique"`
+    
+    // Relación con Credenciales (clave foránea)
+    Credencial      *Credenciales `orm:"column(Id_Contrasena_fk);rel(fk)"`
+    
+    Telefono        int64     `orm:"column(Telefono)"`
+    Direccion       string    `orm:"column(Direccion);size(200)"`
+    Edad            int       `orm:"column(Edad)"`
+    FechaNacimiento string    `orm:"column(Fecha_nacimiento);size(50)"`
+    Estado          bool      `orm:"column(Estado);default(true)"`
+    FechaRegistro   time.Time `orm:"column(Fecha_Registro);auto_now_add;type(timestamp)"`
+    FechaModifica   time.Time `orm:"column(Fecha_Modifica);auto_now;type(timestamp)"`
+    
+    // Relación con Roles (clave foránea)
+    Rol             *Roles    `orm:"column(Id_Roles_fk);rel(fk)"`
+    
+    Usuario         string    `orm:"column(Usuario);size(50)"`
+    Imagen          string    `orm:"column(Imagen);size(255)"`
 }
 
 func (u *Usuarios) TableName() string {
@@ -143,5 +156,10 @@ func (u *Usuarios) TableName() string {
 }
 
 func init() {
-	orm.RegisterModel(new(Usuarios))
+    // Registrar todos los modelos
+    orm.RegisterModel(
+        new(Usuarios),
+        new(Credenciales),
+        new(Roles),
+    )
 }

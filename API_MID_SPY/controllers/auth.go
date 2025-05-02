@@ -1,12 +1,16 @@
 package controllers
 
 import (
-    "github.com/astaxie/beego"
-    "github.com/astaxie/beego/orm"
+	"encoding/json"
+	"net/http"
+	"time"
+	
+	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/orm"
 	"golang.org/x/crypto/bcrypt"
-    "encoding/json"
-
-    "github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/models"
+	
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/models"
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
 )
 
 // AuthController operations for Auth
@@ -25,85 +29,176 @@ func (c *AuthController) URLMapping() {
 	c.Mapping("Delete", c.Delete)
 }
 
-// Login maneja el inicio de sesión
+// LoginRequest define la estructura para el login
+type LoginRequest struct {
+	Email      string `json:"email"`
+	Contrasena string `json:"contrasena"`
+}
+
+// RegisterRequest define la estructura para registro
+type RegisterRequest struct {
+	Nombres    string `json:"nombres"`
+	Apellidos  string `json:"apellidos"`
+	Email      string `json:"email"`
+	Contrasena string `json:"contrasena"`
+	Telefono   int64  `json:"telefono"`
+}
+
+// LoginResponse define la respuesta del login
+type LoginResponse struct {
+	Token string      `json:"token"`
+	User  interface{} `json:"user"`
+}
+
 // @Title Login
-// @Description Login de usuario
-// @Param	body		body 	map[string]string	true	"Credenciales de login"
-// @Success 200 {object} map[string]string
-// @Failure 400 el cuerpo es inválido
+// @Description Inicio de sesión de usuario
+// @Param	body		body 	LoginRequest	true	"Credenciales de usuario"
+// @Success 200 {object} LoginResponse
+// @Failure 400 Credenciales inválidas
 // @router /login [post]
-// POST /auth/login
 func (c *AuthController) Login() {
-	var reqUsuario models.Usuarios
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &reqUsuario); err != nil {
-		c.CustomAbort(400, "Datos inválidos")
+	var req LoginRequest
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]string{"error": "Datos inválidos"}
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.ServeJSON()
 		return
 	}
 
-	// Buscar usuario por email
 	o := orm.NewOrm()
-	var usuario models.Usuarios
-	err := o.QueryTable("usuario").Filter("Email", reqUsuario.Email).One(&usuario)
-	if err == orm.ErrNoRows {
-		c.CustomAbort(401, "Correo o contraseña incorrectos")
+	user := models.Usuarios{Email: req.Email}
+
+	// Cargar usuario con sus relaciones
+	if err := o.QueryTable("usuarios").Filter("Email", req.Email).RelatedSel("Credencial", "Rol").One(&user); err != nil {
+		c.Data["json"] = map[string]string{"error": "Usuario no encontrado"}
+		c.Ctx.Output.SetStatus(http.StatusNotFound)
+		c.ServeJSON()
 		return
 	}
 
-	// Verificar contraseña
-	err = bcrypt.CompareHashAndPassword([]byte(usuario.Contrasena), []byte(reqUsuario.Contrasena))
+	// Verificar contraseña con el hash almacenado en Credencial
+	if user.Credencial == nil || bcrypt.CompareHashAndPassword([]byte(user.Credencial.HashContrasena), []byte(req.Contrasena)) != nil {
+		c.Data["json"] = map[string]string{"error": "Credenciales incorrectas"}
+		c.Ctx.Output.SetStatus(http.StatusUnauthorized)
+		c.ServeJSON()
+		return
+	}
+
+	token, err := security.GenerateJWT(user)
 	if err != nil {
-		c.CustomAbort(401, "Correo o contraseña incorrectos")
+		c.Data["json"] = map[string]string{"error": "Error generando token"}
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.ServeJSON()
 		return
 	}
 
-	c.Data["json"] = map[string]interface{}{
-		"message": "Inicio de sesión exitoso",
-		"user":    usuario,
+	// Limpiar datos sensibles
+	user.Credencial.HashContrasena = ""
+	response := LoginResponse{
+		Token: token,
+		User:  user,
 	}
+
+	c.Data["json"] = response
 	c.ServeJSON()
 }
 
-
-
-// Register maneja el registro de usuario
 // @Title Register
-// @Description Registro de usuario
-// @Param	body		body 	map[string]string	true	"Datos del usuario"
-// @Success 201 {object} map[string]string
-// @Failure 400 si los datos son inválidos
+// @Description Registro de nuevo usuario
+// @Param	body		body 	RegisterRequest	true	"Datos de usuario"
+// @Success 201 {object} models.Usuarios
+// @Failure 400 Datos inválidos o usuario ya existe
 // @router /register [post]
 func (c *AuthController) Register() {
-	var usuario models.Usuarios
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &usuario); err != nil {
-		c.CustomAbort(400, "Datos inválidos")
+	var req RegisterRequest
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.Data["json"] = map[string]string{"error": "Datos inválidos"}
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.ServeJSON()
 		return
 	}
 
-	// Validar que no exista otro usuario con el mismo email o número de identificación
 	o := orm.NewOrm()
-	exists := models.Usuarios{}
-	err := o.QueryTable("usuarios").Filter("Email", usuario.Email).One(&exists)
-	if err == nil {
-		c.CustomAbort(400, "El email ya está registrado")
-		return
-	}
 
-	// Encriptar la contraseña
-	hash, err := bcrypt.GenerateFromPassword([]byte(usuario.Contrasena), bcrypt.DefaultCost)
+	// Iniciar transacción
+	to, err := o.Begin()
 	if err != nil {
-		c.CustomAbort(500, "Error encriptando contraseña")
+		c.Data["json"] = map[string]string{"error": "Error iniciando transacción"}
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.ServeJSON()
 		return
 	}
-	usuario.Contrasena = string(hash)
 
-	// Insertar en la base de datos
-	_, err = o.Insert(&usuario)
+	// Verificar si el email ya existe
+	if exist := o.QueryTable("usuarios").Filter("Email", req.Email).Exist(); exist {
+		to.Rollback()
+		c.Data["json"] = map[string]string{"error": "El email ya está registrado"}
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.ServeJSON()
+		return
+	}
+
+	// 1. Crear credencial primero
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Contrasena), bcrypt.DefaultCost)
 	if err != nil {
-		c.CustomAbort(500, "Error guardando el usuario")
+		to.Rollback()
+		c.Data["json"] = map[string]string{"error": "Error procesando contraseña"}
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.ServeJSON()
 		return
 	}
 
-	c.Data["json"] = map[string]string{"message": "Usuario registrado exitosamente"}
+	credencial := models.Credenciales{
+		HashContrasena: string(hashedPassword),
+		FechaRegistro:  time.Now(),
+	}
+
+	idCredencial, err := to.Insert(&credencial)
+	if err != nil {
+		to.Rollback()
+		c.Data["json"] = map[string]string{"error": "Error creando credencial"}
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.ServeJSON()
+		return
+	}
+
+	// 2. Crear usuario
+	user := models.Usuarios{
+		Nombres:    req.Nombres,
+		Apellidos:  req.Apellidos,
+		Email:      req.Email,
+		Telefono:   req.Telefono,
+		Estado:     true,
+		Credencial: &models.Credenciales{Id: int(idCredencial)},
+		Rol:        &models.Roles{Id: 2}, // Rol de usuario normal
+		Usuario:    req.Email,
+	}
+
+	_, err = to.Insert(&user)
+	if err != nil {
+		to.Rollback()
+		c.Data["json"] = map[string]string{"error": "Error registrando usuario"}
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.ServeJSON()
+		return
+	}
+
+	// Confirmar transacción
+	if err = to.Commit(); err != nil {
+		c.Data["json"] = map[string]string{"error": "Error confirmando transacción"}
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.ServeJSON()
+		return
+	}
+
+	// Cargar usuario recién creado con sus relaciones
+	o.QueryTable("usuarios").Filter("Id_usuarios", user.IdUsuarios).RelatedSel("Credencial", "Rol").One(&user)
+
+	// Limpiar datos sensibles
+	user.Credencial.HashContrasena = ""
+
+	c.Data["json"] = user
+	c.Ctx.Output.SetStatus(http.StatusCreated)
 	c.ServeJSON()
 }
 

@@ -5,7 +5,7 @@ go 1.23.1
 require (
 	github.com/astaxie/beego v1.12.3
 	github.com/beego/beego/v2 v2.3.7
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/lib/pq v1.10.9
 	github.com/smartystreets/goconvey v1.8.1
 	golang.org/x/crypto v0.37.0
