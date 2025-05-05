@@ -95,7 +95,7 @@ func (c *UsuariosController) Post() {
 
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"Succes":  true,
+		"Success":  true,
 		"Status":  201,
 		"type":    "post",
 		"Message": "Creacion existosa",

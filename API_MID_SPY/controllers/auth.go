@@ -2,185 +2,210 @@ package controllers
 
 import (
 	"encoding/json"
-	"net/http"
-	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
-	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
+	"fmt"
+
 	"github.com/astaxie/beego"
-	"golang.org/x/crypto/bcrypt"
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
 )
 
+// AuthController operations for Auth
 type AuthController struct {
 	beego.Controller
 }
 
-// Estructura para respuesta de login
-type LoginResponse struct {
-	Success bool        `json:"success"`
-	Token   string      `json:"token"`
-	User    interface{} `json:"user"`
-	Message string      `json:"message,omitempty"`
+// URLMapping ...
+func (c *AuthController) URLMapping() {
+	c.Mapping("Post", c.Register)
+	c.Mapping("Login", c.Login)
+	c.Mapping("GetAll", c.GetAll)
+	c.Mapping("Put", c.Put)
+	c.Mapping("Delete", c.Delete)
 }
 
-// @Title Register
-// @Description Registrar nuevo usuario
-// @Param	body		body 	models.UserRegister	true	"Datos de registro"
-// @Success 201 {object} models.AuthResponse
-// @Failure 400 body is empty
-// @router /register [post]
+// Register ...
+// @Title Create
+// @Description create Usuarios
+// @Param	body		body 	models.Usuarios	true		"body for Usuarios content"
+// @Success 201 {object} models.Usuarios
+// @Failure 403 body is empty
+// @router / [post]
 func (c *AuthController) Register() {
-	var registerData struct {
-		Nombres    string `json:"nombres"`
-		Apellidos  string `json:"apellidos"`
-		Email      string `json:"email"`
-		Contrasena string `json:"contrasena"`
-	}
-
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &registerData); err != nil {
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+	var body_ingresa map[string]interface{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
 		c.Data["json"] = map[string]interface{}{
-			"success": false,
-			"message": "Datos inválidos",
+			"Success": false,
+			"Status":  400,
+			"Message": "Error al procesar el cuerpo de la solicitud",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	// Hash de la contraseña
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerData.Contrasena), bcrypt.DefaultCost)
+	// Convertir body_ingresa a JSON antes de enviarlo a Metodo_post
+	json_usuario_byte, err := json.Marshal(body_ingresa)
 	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
-			"success": false,
-			"message": "Error al procesar la contraseña",
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al convertir datos a JSON",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	// Crear usuario en CRUD
-	userData := map[string]interface{}{
-		"Nombres":                      registerData.Nombres,
-		"Apellidos":                    registerData.Apellidos,
-		"Email":                        registerData.Email,
-		"IdContrasenaFk": map[string]interface{}{
-			"Contrasena": string(hashedPassword),
-			"Estado":     true,
-		},
-		"Estado":    true,
-		"IdRolesFk": 2, // Rol por defecto (2 = usuario normal)
-	}
-
-	jsonData, _ := json.Marshal(userData)
-	response, err := services.Metodo_post("CRUD_SPY", "Usuarios", jsonData)
+	// Llamar a Metodo_post para crear el usuario en CRUD_SPY
+	response_usuario, err := services.Metodo_post("CRUD_SPY", "Usuarios", json_usuario_byte)
 	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
 		c.Data["json"] = map[string]interface{}{
-			"success": false,
-			"message": "Error al registrar usuario",
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al crear el usuario",
 		}
 		c.ServeJSON()
 		return
 	}
 
+	// Decodificar la respuesta del servicio
+	var temporal_usuario2 map[string]interface{}
+	if err := json.Unmarshal(response_usuario, &temporal_usuario2); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 📌 IMPRIMIR LA RESPUESTA COMPLETA
+	fmt.Println("Respuesta del servidor CRUD_SPY:", temporal_usuario2)
+
+	// Validar si "data" está presente en la respuesta
+	data, ok := temporal_usuario2["data"].(map[string]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success":     false,
+			"Status":      500,
+			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
+			"RawResponse": temporal_usuario2, // 🔍 Incluir la respuesta completa para depuración
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"success": true,
-		"message": "Usuario registrado exitosamente",
-		"data":    string(response),
+		"Succes":  true,
+		"Status":  201,
+		"type":    "post",
+		"Message": "Creacion existosa",
+		"Data":    data,
 	}
+
 	c.ServeJSON()
 }
 
+// Login ...
 // @Title Login
-// @Description Autenticar usuario
-// @Param   body    body    models.LoginRequest  true    "Credenciales"
-// @Success 200 {object} models.AuthResponse
-// @Failure 401 Unauthorized
-// @router /login [post]
+// @Description Login Auth by Email
+// @Param	Email		path 	string	true		"The key for staticblock"
+// @Success 200 {object} models.Usuarios
+// @Failure 403 :Email is empty
+// @router /:Email [get]
 func (c *AuthController) Login() {
-	// 1. Parsear datos de entrada
-	var loginData struct {
-		Email     string `json:"email"`
-		Password  string `json:"password"`
-	}
-	
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &loginData); err != nil {
+	id_ingreso := c.Ctx.Input.Param(":Email") // para capturar el parametro del url /id
+	// println("ese es el id: ", id_ingreso)
+	//----------------------------------------------------------------------------------------
+	// println("PASO 1")
+	//asignacion de datos al body
+	// Obtener datos del usuario desde el servicio externo
+	body, err := services.Metodo_get("CRUD_SPY", "Usuarios", id_ingreso)
+	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
-			"success": false,
-			"message": "Datos inválidos",
-		}
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.ServeJSON()
-		return
-	}
-
-	// 2. Consultar usuario en CRUD
-	response, err := services.Metodo_get("CRUD_SPY", "usuarios/by-email", "?email="+loginData.Email)
-	if err != nil {
-		beego.Error("Error al conectar con CRUD:", err)
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]interface{}{
-			"success": false,
-			"message": "Error al conectar con el servidor",
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener el usuario o el usuario no existe",
 		}
 		c.ServeJSON()
 		return
 	}
-
-	// 3. Parsear respuesta
-	var crudResponse struct {
-		Success bool                   `json:"success"`
-		Data    map[string]interface{} `json:"data"`
-	}
-	
-	if err := json.Unmarshal(response, &crudResponse); !crudResponse.Success || err != nil {
-		c.Ctx.Output.SetStatus(http.StatusUnauthorized)
+	// println("PASO 1.1")
+	//----------------------------------------------------------------------------------------
+	// println("PASO 2")
+	// Decodificar JSON
+	var userData map[string]interface{}
+	if err := json.Unmarshal(body, &userData); err != nil {
 		c.Data["json"] = map[string]interface{}{
-			"success": false,
-			"message": "Credenciales inválidas",
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
 		}
 		c.ServeJSON()
 		return
 	}
+	// println("PASO 2.1")
+	// fmt.Println("Respuesta del servicio:", userData)
 
-	// 4. Verificar contraseña
-	credenciales := crudResponse.Data["IdContrasenaFk"].(map[string]interface{})
-	storedPassword := credenciales["Contrasena"].(string)
-	
-	if err := bcrypt.CompareHashAndPassword(
-		[]byte(storedPassword),
-		[]byte(loginData.Password),
-	); err != nil {
-		c.Ctx.Output.SetStatus(http.StatusUnauthorized)
-		c.Data["json"] = map[string]interface{}{
-			"success": false,
-			"message": "Credenciales inválidas",
-		}
-		c.ServeJSON()
-		return
+	// Extraer y validar solo los datos necesarios
+	// El JSON que esperas es un array de objetos
+	usuario := map[string]interface{}{
+		"Id":              userData["data"].(map[string]interface{})["Id"],
+		"Email":                userData["data"].(map[string]interface{})["Email"],
+		"Contraseña":            userData["data"].(map[string]interface{})["IdContrasenaFk"].(map[string]interface{})["Id"],
+		"Rol":            userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
 	}
+	// jsonData2, _ := json.MarshalIndent(usuario, "", "  ")
+	// println("PASO 2.2")
+	// println("Respuesta del servicio:", string(jsonData2))
 
-	// 5. Generar token JWT
-	userId := int(crudResponse.Data["Id"].(float64))
-	token, err := security.GenerateJWT(userId)
-	if err != nil {
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.Data["json"] = map[string]interface{}{
-			"success": false,
-			"message": "Error al generar token",
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// 6. Responder con token
+	//----------------------------------------------------------------------------------------
+	// println("PASO 3")
+	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"success": true,
-		"token":   token,
-		"user": map[string]interface{}{
-			"id":    userId,
-			"email": crudResponse.Data["Email"],
-			"role":  crudResponse.Data["IdRolesFk"].(map[string]interface{})["Id"],
-		},
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    usuario,
 	}
+	// println("PASO 3.1")
 	c.ServeJSON()
+}
+
+// GetAll ...
+// @Title GetAll
+// @Description get Auth
+// @Param	query	query	string	false	"Filter. e.g. col1:v1,col2:v2 ..."
+// @Param	fields	query	string	false	"Fields returned. e.g. col1,col2 ..."
+// @Param	sortby	query	string	false	"Sorted-by fields. e.g. col1,col2 ..."
+// @Param	order	query	string	false	"Order corresponding to each sortby field, if single value, apply to all sortby fields. e.g. desc,asc ..."
+// @Param	limit	query	string	false	"Limit the size of result set. Must be an integer"
+// @Param	offset	query	string	false	"Start position of result set. Must be an integer"
+// @Success 200 {object} models.Auth
+// @Failure 403
+// @router / [get]
+func (c *AuthController) GetAll() {
+
+}
+
+// Put ...
+// @Title Put
+// @Description update the Auth
+// @Param	id		path 	string	true		"The id you want to update"
+// @Param	body		body 	models.Auth	true		"body for Auth content"
+// @Success 200 {object} models.Auth
+// @Failure 403 :id is not int
+// @router /:id [put]
+func (c *AuthController) Put() {
+
+}
+
+// Delete ...
+// @Title Delete
+// @Description delete the Auth
+// @Param	id		path 	string	true		"The id you want to delete"
+// @Success 200 {string} delete success!
+// @Failure 403 id is empty
+// @router /:id [delete]
+func (c *AuthController) Delete() {
+
 }
