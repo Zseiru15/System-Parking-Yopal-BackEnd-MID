@@ -3,262 +3,184 @@ package controllers
 import (
 	"encoding/json"
 	"net/http"
-	"time"
-	
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/orm"
-	"golang.org/x/crypto/bcrypt"
-	
-	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/models"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
+	"github.com/astaxie/beego"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// AuthController operations for Auth
 type AuthController struct {
 	beego.Controller
 }
 
-// URLMapping ...
-func (c *AuthController) URLMapping() {
-	c.Mapping("Login", c.Login)
-	c.Mapping("Register", c.Register)
-	c.Mapping("Post", c.Post)
-	c.Mapping("GetOne", c.GetOne)
-	c.Mapping("GetAll", c.GetAll)
-	c.Mapping("Put", c.Put)
-	c.Mapping("Delete", c.Delete)
-}
-
-// LoginRequest define la estructura para el login
-type LoginRequest struct {
-	Email      string `json:"email"`
-	Contrasena string `json:"contrasena"`
-}
-
-// RegisterRequest define la estructura para registro
-type RegisterRequest struct {
-	Nombres    string `json:"nombres"`
-	Apellidos  string `json:"apellidos"`
-	Email      string `json:"email"`
-	Contrasena string `json:"contrasena"`
-	Telefono   int64  `json:"telefono"`
-}
-
-// LoginResponse define la respuesta del login
+// Estructura para respuesta de login
 type LoginResponse struct {
-	Token string      `json:"token"`
-	User  interface{} `json:"user"`
-}
-
-// @Title Login
-// @Description Inicio de sesión de usuario
-// @Param	body		body 	LoginRequest	true	"Credenciales de usuario"
-// @Success 200 {object} LoginResponse
-// @Failure 400 Credenciales inválidas
-// @router /login [post]
-func (c *AuthController) Login() {
-	var req LoginRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		c.Data["json"] = map[string]string{"error": "Datos inválidos"}
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.ServeJSON()
-		return
-	}
-
-	o := orm.NewOrm()
-	user := models.Usuarios{Email: req.Email}
-
-	// Cargar usuario con sus relaciones
-	if err := o.QueryTable("usuarios").Filter("Email", req.Email).RelatedSel("Credencial", "Rol").One(&user); err != nil {
-		c.Data["json"] = map[string]string{"error": "Usuario no encontrado"}
-		c.Ctx.Output.SetStatus(http.StatusNotFound)
-		c.ServeJSON()
-		return
-	}
-
-	// Verificar contraseña con el hash almacenado en Credencial
-	if user.Credencial == nil || bcrypt.CompareHashAndPassword([]byte(user.Credencial.HashContrasena), []byte(req.Contrasena)) != nil {
-		c.Data["json"] = map[string]string{"error": "Credenciales incorrectas"}
-		c.Ctx.Output.SetStatus(http.StatusUnauthorized)
-		c.ServeJSON()
-		return
-	}
-
-	token, err := security.GenerateJWT(user)
-	if err != nil {
-		c.Data["json"] = map[string]string{"error": "Error generando token"}
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.ServeJSON()
-		return
-	}
-
-	// Limpiar datos sensibles
-	user.Credencial.HashContrasena = ""
-	response := LoginResponse{
-		Token: token,
-		User:  user,
-	}
-
-	c.Data["json"] = response
-	c.ServeJSON()
+	Success bool        `json:"success"`
+	Token   string      `json:"token"`
+	User    interface{} `json:"user"`
+	Message string      `json:"message,omitempty"`
 }
 
 // @Title Register
-// @Description Registro de nuevo usuario
-// @Param	body		body 	RegisterRequest	true	"Datos de usuario"
-// @Success 201 {object} models.Usuarios
-// @Failure 400 Datos inválidos o usuario ya existe
+// @Description Registrar nuevo usuario
+// @Param	body		body 	models.UserRegister	true	"Datos de registro"
+// @Success 201 {object} models.AuthResponse
+// @Failure 400 body is empty
 // @router /register [post]
 func (c *AuthController) Register() {
-	var req RegisterRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		c.Data["json"] = map[string]string{"error": "Datos inválidos"}
+	var registerData struct {
+		Nombres    string `json:"nombres"`
+		Apellidos  string `json:"apellidos"`
+		Email      string `json:"email"`
+		Contrasena string `json:"contrasena"`
+	}
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &registerData); err != nil {
 		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Datos inválidos",
+		}
 		c.ServeJSON()
 		return
 	}
 
-	o := orm.NewOrm()
-
-	// Iniciar transacción
-	to, err := o.Begin()
+	// Hash de la contraseña
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(registerData.Contrasena), bcrypt.DefaultCost)
 	if err != nil {
-		c.Data["json"] = map[string]string{"error": "Error iniciando transacción"}
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Error al procesar la contraseña",
+		}
 		c.ServeJSON()
 		return
 	}
 
-	// Verificar si el email ya existe
-	if exist := o.QueryTable("usuarios").Filter("Email", req.Email).Exist(); exist {
-		to.Rollback()
-		c.Data["json"] = map[string]string{"error": "El email ya está registrado"}
-		c.Ctx.Output.SetStatus(http.StatusBadRequest)
-		c.ServeJSON()
-		return
+	// Crear usuario en CRUD
+	userData := map[string]interface{}{
+		"Nombres":                      registerData.Nombres,
+		"Apellidos":                    registerData.Apellidos,
+		"Email":                        registerData.Email,
+		"IdContrasenaFk": map[string]interface{}{
+			"Contrasena": string(hashedPassword),
+			"Estado":     true,
+		},
+		"Estado":    true,
+		"IdRolesFk": 2, // Rol por defecto (2 = usuario normal)
 	}
 
-	// 1. Crear credencial primero
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Contrasena), bcrypt.DefaultCost)
+	jsonData, _ := json.Marshal(userData)
+	response, err := services.Metodo_post("CRUD_SPY", "Usuarios", jsonData)
 	if err != nil {
-		to.Rollback()
-		c.Data["json"] = map[string]string{"error": "Error procesando contraseña"}
 		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Error al registrar usuario",
+		}
 		c.ServeJSON()
 		return
 	}
 
-	credencial := models.Credenciales{
-		HashContrasena: string(hashedPassword),
-		FechaRegistro:  time.Now(),
+	c.Data["json"] = map[string]interface{}{
+		"success": true,
+		"message": "Usuario registrado exitosamente",
+		"data":    string(response),
 	}
-
-	idCredencial, err := to.Insert(&credencial)
-	if err != nil {
-		to.Rollback()
-		c.Data["json"] = map[string]string{"error": "Error creando credencial"}
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.ServeJSON()
-		return
-	}
-
-	// 2. Crear usuario
-	user := models.Usuarios{
-		Nombres:    req.Nombres,
-		Apellidos:  req.Apellidos,
-		Email:      req.Email,
-		Telefono:   req.Telefono,
-		Estado:     true,
-		Credencial: &models.Credenciales{Id: int(idCredencial)},
-		Rol:        &models.Roles{Id: 2}, // Rol de usuario normal
-		Usuario:    req.Email,
-	}
-
-	_, err = to.Insert(&user)
-	if err != nil {
-		to.Rollback()
-		c.Data["json"] = map[string]string{"error": "Error registrando usuario"}
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.ServeJSON()
-		return
-	}
-
-	// Confirmar transacción
-	if err = to.Commit(); err != nil {
-		c.Data["json"] = map[string]string{"error": "Error confirmando transacción"}
-		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
-		c.ServeJSON()
-		return
-	}
-
-	// Cargar usuario recién creado con sus relaciones
-	o.QueryTable("usuarios").Filter("Id_usuarios", user.IdUsuarios).RelatedSel("Credencial", "Rol").One(&user)
-
-	// Limpiar datos sensibles
-	user.Credencial.HashContrasena = ""
-
-	c.Data["json"] = user
-	c.Ctx.Output.SetStatus(http.StatusCreated)
 	c.ServeJSON()
 }
 
-// Post ...
-// @Title Create
-// @Description create Auth
-// @Param	body		body 	models.Auth	true		"body for Auth content"
-// @Success 201 {object} models.Auth
-// @Failure 403 body is empty
-// @router / [post]
-func (c *AuthController) Post() {
+// @Title Login
+// @Description Autenticar usuario
+// @Param   body    body    models.LoginRequest  true    "Credenciales"
+// @Success 200 {object} models.AuthResponse
+// @Failure 401 Unauthorized
+// @router /login [post]
+func (c *AuthController) Login() {
+	// 1. Parsear datos de entrada
+	var loginData struct {
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+	}
+	
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &loginData); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Datos inválidos",
+		}
+		c.Ctx.Output.SetStatus(http.StatusBadRequest)
+		c.ServeJSON()
+		return
+	}
 
-}
+	// 2. Consultar usuario en CRUD
+	response, err := services.Metodo_get("CRUD_SPY", "usuarios/by-email", "?email="+loginData.Email)
+	if err != nil {
+		beego.Error("Error al conectar con CRUD:", err)
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Error al conectar con el servidor",
+		}
+		c.ServeJSON()
+		return
+	}
 
-// GetOne ...
-// @Title GetOne
-// @Description get Auth by id
-// @Param	id		path 	string	true		"The key for staticblock"
-// @Success 200 {object} models.Auth
-// @Failure 403 :id is empty
-// @router /:id [get]
-func (c *AuthController) GetOne() {
+	// 3. Parsear respuesta
+	var crudResponse struct {
+		Success bool                   `json:"success"`
+		Data    map[string]interface{} `json:"data"`
+	}
+	
+	if err := json.Unmarshal(response, &crudResponse); !crudResponse.Success || err != nil {
+		c.Ctx.Output.SetStatus(http.StatusUnauthorized)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Credenciales inválidas",
+		}
+		c.ServeJSON()
+		return
+	}
 
-}
+	// 4. Verificar contraseña
+	credenciales := crudResponse.Data["IdContrasenaFk"].(map[string]interface{})
+	storedPassword := credenciales["Contrasena"].(string)
+	
+	if err := bcrypt.CompareHashAndPassword(
+		[]byte(storedPassword),
+		[]byte(loginData.Password),
+	); err != nil {
+		c.Ctx.Output.SetStatus(http.StatusUnauthorized)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Credenciales inválidas",
+		}
+		c.ServeJSON()
+		return
+	}
 
-// GetAll ...
-// @Title GetAll
-// @Description get Auth
-// @Param	query	query	string	false	"Filter. e.g. col1:v1,col2:v2 ..."
-// @Param	fields	query	string	false	"Fields returned. e.g. col1,col2 ..."
-// @Param	sortby	query	string	false	"Sorted-by fields. e.g. col1,col2 ..."
-// @Param	order	query	string	false	"Order corresponding to each sortby field, if single value, apply to all sortby fields. e.g. desc,asc ..."
-// @Param	limit	query	string	false	"Limit the size of result set. Must be an integer"
-// @Param	offset	query	string	false	"Start position of result set. Must be an integer"
-// @Success 200 {object} models.Auth
-// @Failure 403
-// @router / [get]
-func (c *AuthController) GetAll() {
+	// 5. Generar token JWT
+	userId := int(crudResponse.Data["Id"].(float64))
+	token, err := security.GenerateJWT(userId)
+	if err != nil {
+		c.Ctx.Output.SetStatus(http.StatusInternalServerError)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Error al generar token",
+		}
+		c.ServeJSON()
+		return
+	}
 
-}
-
-// Put ...
-// @Title Put
-// @Description update the Auth
-// @Param	id		path 	string	true		"The id you want to update"
-// @Param	body		body 	models.Auth	true		"body for Auth content"
-// @Success 200 {object} models.Auth
-// @Failure 403 :id is not int
-// @router /:id [put]
-func (c *AuthController) Put() {
-
-}
-
-// Delete ...
-// @Title Delete
-// @Description delete the Auth
-// @Param	id		path 	string	true		"The id you want to delete"
-// @Success 200 {string} delete success!
-// @Failure 403 id is empty
-// @router /:id [delete]
-func (c *AuthController) Delete() {
-
+	// 6. Responder con token
+	c.Data["json"] = map[string]interface{}{
+		"success": true,
+		"token":   token,
+		"user": map[string]interface{}{
+			"id":    userId,
+			"email": crudResponse.Data["Email"],
+			"role":  crudResponse.Data["IdRolesFk"].(map[string]interface{})["Id"],
+		},
+	}
+	c.ServeJSON()
 }

@@ -4,19 +4,11 @@ import (
 	"errors"
 	"strconv"
 	"time"
-
-	"github.com/astaxie/beego/orm"
 )
 
 var (
 	UserList map[string]*User
 )
-
-func init() {
-	UserList = make(map[string]*User)
-	u := User{"user_11111", "nombre_astaxie", "apellido_astaxie", "11111", Profile{"male", 20, "Singapore", "astaxie@gmail.com", 1}}
-	UserList["user_11111"] = &u
-}
 
 type User struct {
 	Id         string
@@ -124,42 +116,4 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Token string      `json:"token"`
 	User  interface{} `json:"user"`
-}
-
-type Usuarios struct {
-    IdUsuarios      int       `orm:"column(Id_usuarios);pk;auto"`
-    Nombres         string    `orm:"column(Nombres);size(100)"`
-    Apellidos       string    `orm:"column(Apellidos);size(100)"`
-    NumeroIdentifi  string    `orm:"column(Numero_Identificacion_Usuarios);size(50)"`
-    Email           string    `orm:"column(Email);size(100);unique"`
-    
-    // Relación con Credenciales (clave foránea)
-    Credencial      *Credenciales `orm:"column(Id_Contrasena_fk);rel(fk)"`
-    
-    Telefono        int64     `orm:"column(Telefono)"`
-    Direccion       string    `orm:"column(Direccion);size(200)"`
-    Edad            int       `orm:"column(Edad)"`
-    FechaNacimiento string    `orm:"column(Fecha_nacimiento);size(50)"`
-    Estado          bool      `orm:"column(Estado);default(true)"`
-    FechaRegistro   time.Time `orm:"column(Fecha_Registro);auto_now_add;type(timestamp)"`
-    FechaModifica   time.Time `orm:"column(Fecha_Modifica);auto_now;type(timestamp)"`
-    
-    // Relación con Roles (clave foránea)
-    Rol             *Roles    `orm:"column(Id_Roles_fk);rel(fk)"`
-    
-    Usuario         string    `orm:"column(Usuario);size(50)"`
-    Imagen          string    `orm:"column(Imagen);size(255)"`
-}
-
-func (u *Usuarios) TableName() string {
-	return "Usuarios"
-}
-
-func init() {
-    // Registrar todos los modelos
-    orm.RegisterModel(
-        new(Usuarios),
-        new(Credenciales),
-        new(Roles),
-    )
 }
