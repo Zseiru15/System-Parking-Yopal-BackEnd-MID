@@ -14,7 +14,8 @@ type UserRequest struct {
 	Direccion            string `json:"Direccion"`
 	IdRolesFk            struct {
 		Id     int    `json:"Id"`
-		Nombre string `json:"Nombre"`
+		Roles string `json:"Roles"`
+		Cargos string `json:"Cargos"`
 	} `json:"IdRolesFk"`
 	IdContrasenaFk struct {
 		Contrasena string `json:"Contrasena"`

@@ -149,7 +149,7 @@ func (c *UsuariosController) GetOne() {
 	// Extraer y validar solo los datos necesarios
 	// El JSON que esperas es un array de objetos
 	usuario := map[string]interface{}{
-		"Id":                   userData["data"].(map[string]interface{})["Idusuarios"],
+		"Id":                   userData["data"].(map[string]interface{})["Id"],
 		"Nombres":              userData["data"].(map[string]interface{})["Nombres"],
 		"Apellidos":            userData["data"].(map[string]interface{})["Apellidos"],
 		"NumeroIdentificacion": userData["data"].(map[string]interface{})["NumeroIdentificacionUsuarios"],

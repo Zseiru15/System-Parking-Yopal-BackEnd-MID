@@ -245,14 +245,14 @@ func (c *AuthController) Login() {
 	fmt.Println("Datos de login recibidos:", body)
 
 	// Validar que se hayan enviado el correo y la contraseña
-	correo, ok := body["CorreoElectronico"].(string)
+	correo, ok := body["Email"].(string)
 	if !ok || correo == "" {
 		handleError(c, "El campo 'CorreoElectronico' es obligatorio", nil)
 		return
 	}
-	password, ok := body["contraseña"].(string)
+	password, ok := body["Contraseña"].(string)
 	if !ok || password == "" {
-		handleError(c, "El campo 'contraseña' es obligatorio", nil)
+		handleError(c, "El campo 'Contraseña' es obligatorio", nil)
 		return
 	}
 

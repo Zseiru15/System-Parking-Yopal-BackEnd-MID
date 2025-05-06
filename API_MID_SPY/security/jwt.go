@@ -16,7 +16,7 @@ var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 // CustomClaims define los claims personalizados que queremos incluir en el token.
 // Aquí se incluyen el UserID, Email y Role. Puedes agregar más campos según lo necesites.
 type CustomClaims struct {
-	UserID int    `json:"user_id"`
+	Idusuarios int    `json:"user_id"`
 	Email  string `json:"email"`
 	Role   string `json:"role"`
 	jwt.RegisteredClaims
@@ -26,13 +26,13 @@ type CustomClaims struct {
 // El token expira en 24 horas
 func GenerateJWT(Id_usuarios int, Email, IdRolesFk string) (string, error) {
 	claims := CustomClaims{
-		UserID: Id_usuarios,
+		Idusuarios: Id_usuarios,
 		Email:  Email,
 		Role:   IdRolesFk,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "spike",
+			Issuer:    "SPY",
 		},
 	}
 
