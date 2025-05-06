@@ -1,46 +1,88 @@
 package security
 
 import (
+	"fmt"
+	"net/http"
+	"os"
 	"time"
-	"github.com/dgrijalva/jwt-go"
+
+	"github.com/astaxie/beego/context"
+	"github.com/golang-jwt/jwt/v4"
 )
 
-var JWTSecret = []byte("tu_clave_secreta_very_secret")
+// jwtSecret se carga desde la variable de entorno JWT_SECRET
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
-type Claims struct {
-	UserId int `json:"user_id"`
-	jwt.StandardClaims
+// CustomClaims define los claims personalizados que queremos incluir en el token.
+// Aquí se incluyen el UserID, Email y Role. Puedes agregar más campos según lo necesites.
+type CustomClaims struct {
+	UserID int    `json:"user_id"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
+	jwt.RegisteredClaims
 }
 
-func GenerateJWT(userId int) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
-	
-	claims := &Claims{
-		UserId: userId,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expirationTime.Unix(),
-			IssuedAt:  time.Now().Unix(),
+// GenerateJWT genera un token JWT para un usuario dado.
+// El token expira en 24 horas
+func GenerateJWT(Id_usuarios int, Email, IdRolesFk string) (string, error) {
+	claims := CustomClaims{
+		UserID: Id_usuarios,
+		Email:  Email,
+		Role:   IdRolesFk,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "spike",
 		},
 	}
 
+	// Crear el token usando el método de firma HS256
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(JWTSecret)
+	// Firmar el token con la clave secreta
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		return "", fmt.Errorf("error generando token: %v", err)
+	}
+	return tokenString, nil
 }
 
-func ValidateToken(tokenString string) (*Claims, error) {
-	claims := &Claims{}
-	
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return JWTSecret, nil
+// verifica si se envía un token JWT válido.
+func jwtFilter(ctx *context.Context) {
+	// Se espera que el token se envíe en el header "Authorization"
+	tokenStr := ctx.Input.Header("Authorization")
+	if tokenStr == "" {
+		ctx.Output.SetStatus(http.StatusUnauthorized)
+		ctx.Output.Body([]byte("No se proporcionó token"))
+		return
+	}
+
+	// Validar el token utilizando la función ValidarJWT
+	_, err := ValidarJWT(tokenStr)
+	if err != nil {
+		ctx.Output.SetStatus(http.StatusUnauthorized)
+		ctx.Output.Body([]byte("Token inválido o expirado"))
+		return
+	}
+	// Si el token es válido, el filtro permite continuar con la solicitud.
+}
+
+// valida un token JWT y retorna los claims si es válido.
+// Se asegura que el método de firma sea el esperado.
+func ValidarJWT(tokenString string) (*CustomClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &CustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Verificar el método de firma
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("método de firma inesperado: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
 	})
-	
 	if err != nil {
 		return nil, err
 	}
-	
-	if !token.Valid {
-		return nil, jwt.ErrSignatureInvalid
+
+	// Si el token es válido, se retornan los claims
+	if claims, ok := token.Claims.(*CustomClaims); ok && token.Valid {
+		return claims, nil
 	}
-	
-	return claims, nil
+	return nil, fmt.Errorf("token inválido")
 }

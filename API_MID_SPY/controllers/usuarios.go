@@ -95,7 +95,7 @@ func (c *UsuariosController) Post() {
 
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"Success":  true,
+		"Success": true,
 		"Status":  201,
 		"type":    "post",
 		"Message": "Creacion existosa",
@@ -149,10 +149,10 @@ func (c *UsuariosController) GetOne() {
 	// Extraer y validar solo los datos necesarios
 	// El JSON que esperas es un array de objetos
 	usuario := map[string]interface{}{
+		"Id":                   userData["data"].(map[string]interface{})["Idusuarios"],
 		"Nombres":              userData["data"].(map[string]interface{})["Nombres"],
 		"Apellidos":            userData["data"].(map[string]interface{})["Apellidos"],
 		"NumeroIdentificacion": userData["data"].(map[string]interface{})["NumeroIdentificacionUsuarios"],
-		"Edad":                 userData["data"].(map[string]interface{})["Edad"],
 		"Email":                userData["data"].(map[string]interface{})["Email"],
 		"Telefono":             userData["data"].(map[string]interface{})["Telefono"],
 		"Direccion":            userData["data"].(map[string]interface{})["Direccion"],
@@ -236,10 +236,10 @@ func (c *UsuariosController) GetAll() {
 
 		// Agregar usuario procesado a la lista final
 		usuarios = append(usuarios, map[string]interface{}{
+			"Id":                   user["Id"],
 			"Nombres":              user["Nombres"],
 			"Apellidos":            user["Apellidos"],
 			"NumeroIdentificacion": user["NumeroIdentificacionUsuarios"],
-			"Edad":                 user["Edad"],
 			"Email":                user["Email"],
 			"Telefono":             user["Telefono"],
 			"Direccion":            user["Direccion"],
@@ -344,7 +344,6 @@ func (c *UsuariosController) Put() {
 	}
 	c.ServeJSON()
 }
-
 
 // Delete ...
 // @Title Disable
