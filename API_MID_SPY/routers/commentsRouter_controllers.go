@@ -27,15 +27,6 @@ func init() {
 
     beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"],
         beego.ControllerComments{
-            Method: "GeneraryEnviarToken",
-            Router: "/:correo",
-            AllowHTTPMethods: []string{"put"},
-            MethodParams: param.Make(),
-            Filters: nil,
-            Params: nil})
-
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"],
-        beego.ControllerComments{
             Method: "GetOne",
             Router: "/:id",
             AllowHTTPMethods: []string{"get"},
@@ -57,42 +48,6 @@ func init() {
             Method: "Delete",
             Router: "/:id",
             AllowHTTPMethods: []string{"delete"},
-            MethodParams: param.Make(),
-            Filters: nil,
-            Params: nil})
-
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"],
-        beego.ControllerComments{
-            Method: "Login",
-            Router: "/auth/login",
-            AllowHTTPMethods: []string{"post"},
-            MethodParams: param.Make(),
-            Filters: nil,
-            Params: nil})
-
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"],
-        beego.ControllerComments{
-            Method: "Register",
-            Router: "/auth/register",
-            AllowHTTPMethods: []string{"post"},
-            MethodParams: param.Make(),
-            Filters: nil,
-            Params: nil})
-
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"],
-        beego.ControllerComments{
-            Method: "ActualizarContraseña",
-            Router: "/recuperar/:token",
-            AllowHTTPMethods: []string{"put"},
-            MethodParams: param.Make(),
-            Filters: nil,
-            Params: nil})
-
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:AuthController"],
-        beego.ControllerComments{
-            Method: "ValidarToken",
-            Router: "/validartoken",
-            AllowHTTPMethods: []string{"post"},
             MethodParams: param.Make(),
             Filters: nil,
             Params: nil})

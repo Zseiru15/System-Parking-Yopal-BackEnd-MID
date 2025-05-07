@@ -2,21 +2,14 @@ package services
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
 
 	"github.com/astaxie/beego"
-	"github.com/joho/godotenv"
-	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/exp/rand"
-	"gopkg.in/gomail.v2"
 )
 
 // Orden de los servicios
@@ -101,10 +94,6 @@ func Metodo_get(nombre_servicio, endpoint, parametro string) ([]byte, error) {
 
 	if url == "" {
 		return nil, fmt.Errorf("no se encontró la configuración para %s", nombre_servicio)
-	}
-
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		url = "http://" + url
 	}
 
 	resp, err := http.Get(url)
@@ -270,81 +259,4 @@ func Metodo_patch(nombre_servicio, endpoint, id string, data []byte) ([]byte, er
 
 	fmt.Println("Respuesta de la API:", string(body))
 	return body, nil
-}
-
-// GenerarToken crea un token de 5 dígitos aleatorios y lo hashea
-func GenerarToken() (string, string, error) {
-	token := fmt.Sprintf("%05d", 10000+rand.Intn(90000)) // Token de 5 dígitos
-
-	// Hashear el token antes de guardarlo
-	hashedToken, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
-	if err != nil {
-		return "", "", err
-	}
-
-	return token, string(hashedToken), nil
-}
-
-// VerificarToken compara el token ingresado con el hash almacenado
-func VerificarToken(tokenIngresado string, tokenGuardado string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(tokenGuardado), []byte(tokenIngresado))
-	return err == nil
-}
-
-func init() {
-	err := godotenv.Load() // Carga el archivo .env en el entorno
-	if err != nil {
-		log.Println("Error cargando el archivo .env:", err)
-	}
-}
-
-// EnviarCorreo envía un token de recuperación al usuario
-func EnviarCorreo(destinatario string, token string) error {
-	// Obtener credenciales del .env
-	smtpHost := os.Getenv("SMTP_HOST")
-	smtpPort := os.Getenv("SMTP_PORT")
-	smtpUser := os.Getenv("SMTP_USER")
-	smtpPass := os.Getenv("SMTP_PASS")
-	fmt.Println("SMTP_PORT:", smtpPort)
-
-	if smtpHost == "" || smtpPort == "" || smtpUser == "" || smtpPass == "" {
-		log.Println("Error: Configuración de SMTP incompleta")
-		return fmt.Errorf("configuración de SMTP incompleta")
-	}
-
-	// Convertir puerto a entero
-	port, err := strconv.Atoi(smtpPort)
-	if err != nil {
-		log.Printf("Error convirtiendo SMTP_PORT a número: %v", err)
-		return err
-	}
-	fmt.Println("SMTP_PORT:", smtpPort)
-
-	// Configurar mensaje
-	mensaje := gomail.NewMessage()
-	mensaje.SetHeader("From", smtpUser)
-	mensaje.SetHeader("To", destinatario)
-	mensaje.SetHeader("Subject", "Recuperación de contraseña")
-	mensaje.SetBody("text/plain", fmt.Sprintf("Tu código de recuperación es: %s", token))
-
-	// Configurar servidor SMTP
-	dialer := gomail.NewDialer(smtpHost, port, smtpUser, smtpPass)
-	dialer.TLSConfig = &tls.Config{InsecureSkipVerify: true} // Descomentar si hay problemas con TLS
-
-	// Enviar correo
-	if err := dialer.DialAndSend(mensaje); err != nil {
-		log.Printf("Error enviando el correo: %v", err)
-		return err
-	}
-
-	fmt.Println("Correo enviado correctamente a", destinatario)
-	return nil
-}
-
-func HashContraseña(password string) (string, error) {
-	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", fmt.Errorf("error al hashear la contraseña: %v", err)
-	}
-	return string(hashed), nil
 }

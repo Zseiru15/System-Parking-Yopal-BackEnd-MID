@@ -2,14 +2,10 @@ package controllers
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/astaxie/beego"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
-	jwt "github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
 )
 
 // AuthController operations for Auth
@@ -48,7 +44,7 @@ func (c *AuthController) URLMapping() {
 // 6. actualizarFkCredencialUsuario
 // 7. handleError (manejo de errores)
 
-
+// Post ...
 // @Title Post
 // @Description create Auth
 // @Param	body		body 	models.Auth	true		"body for Auth content"
@@ -56,381 +52,78 @@ func (c *AuthController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *AuthController) Post() {
-
-}
-
-// Register ...
-// @Title Create
-// @Description create Usuarios
-// @Param	body		body 	models.Usuarios	true		"body for Usuarios content"
-// @Success 201 {object} models.Usuarios
-// @Failure 403 body is empty
-// @router /auth/register [post]
-func (c *AuthController) Register() {
-	var body_ingreso map[string]interface{}
-	var reponseUsuario, responseCredencial, responseRolUsuario []byte
-
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingreso); err == nil {
-		fmt.Println("Body que ingresa", body_ingreso)
-
-		jsonData, err := json.MarshalIndent(body_ingreso, "", " ")
-		if err != nil {
-			fmt.Println("Error al convertir a JSON", err)
+	var body_ingresa map[string]interface{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Error al procesar el cuerpo de la solicitud",
 		}
-		fmt.Println("Body de ingreso en JSON:", string(jsonData))
-
-		passStr, _ := body_ingreso["contraseña"].(string)
-
-		// Hashear la contraseña
-		hashedPass, err := services.HashContraseña(passStr)
-		if err != nil {
-			fmt.Println(err)
-			c.Data["json"] = map[string]interface{}{"error": "Error interno al procesar la contraseña"}
-			c.ServeJSON()
-			return
-		}
-
-		jsonCredencial := map[string]interface{}{
-			"contraseña": hashedPass,
-		}
-		fmt.Println("este es el json para credenciales: ", jsonCredencial)
-
-		jsonUsuario := map[string]interface{}{
-			"nombre":             body_ingreso["Nombre"],
-			"apellido":           body_ingreso["Apellido"],
-			"contacto":           body_ingreso["Contacto"],
-			"correo_electronico": body_ingreso["CorreoElectronico"],
-		}
-		fmt.Println("este es el json usuario: ", jsonUsuario)
-
-		json_credencial_byte, _ := json.Marshal(jsonCredencial)
-		// json_usuario_byte, _ := json.Marshal(jsonUsuario)
-
-		fmt.Println("json credencial: ", string(json_credencial_byte))
-		responseCredencial, _ = services.Metodo_post("API_CRUD", "/v1/Credenciales", json_credencial_byte)
-		if err != nil {
-			fmt.Println("Error al crear credenciales:", err)
-			return
-		}
-		fmt.Println("Respuesta de la API (Credenciales): ", string(responseCredencial))
-
-		// Obtener el ID de credencial creada
-		var credencialresponse map[string]interface{}
-		if err := json.Unmarshal(responseCredencial, &credencialresponse); err != nil {
-			fmt.Println("Error al parsear respuesta de credenciales:", err)
-			return
-		}
-
-		// Extraer el ID de la credencial
-		var credencialID float64
-		if data, ok := credencialresponse["Data"].(map[string]interface{}); ok {
-			if id, exists := data["Id"].(float64); exists {
-				credencialID = id
-			} else {
-				fmt.Println("Error: No se encontró el ID en la respuesta de Credenciales")
-				return
-			}
-		} else {
-			fmt.Println("Error: Estructura de respuesta de credenciales no válida")
-			return
-		}
-		fmt.Println("Id de credenciales: ", credencialID)
-
-		// Crear JSON para Usuario con fk_credencial
-		jsonUsuario = map[string]interface{}{
-			"Nombre":            body_ingreso["Nombre"],
-			"Apellido":          body_ingreso["Apellido"],
-			"Contacto":          body_ingreso["Contacto"],
-			"CorreoElectronico": body_ingreso["CorreoElectronico"],
-			"FkCredencial": map[string]interface{}{
-				"Id": credencialID,
-			},
-		}
-
-		// Convertir a JSON y enviar POST a /v1/Usuario
-		json_usuario_byte, _ := json.Marshal(jsonUsuario)
-		fmt.Println("Enviando JSON a /v1/Usuario:", string(json_usuario_byte))
-		reponseUsuario, err = services.Metodo_post("API_CRUD", "/v1/Usuario", json_usuario_byte)
-		if err != nil {
-			fmt.Println(" Error al crear usuario:", err)
-			return
-		}
-
-		fmt.Println("Respuesta de la API (Usuario):", string(reponseUsuario))
-
-		// Extraer el ID del usuario creado
-		var usuarioResponse map[string]interface{}
-		if err := json.Unmarshal(reponseUsuario, &usuarioResponse); err != nil {
-			fmt.Println("Error al parsear respuesta de usuario:", err)
-			return
-		}
-
-		var usuarioID float64
-		if data, ok := usuarioResponse["Data"].(map[string]interface{}); ok {
-			if id, exists := data["Id"].(float64); exists {
-				usuarioID = id
-			} else {
-				fmt.Println("Error: No se encontró el ID en la respuesta de Usuario")
-				return
-			}
-		} else {
-			fmt.Println("Error: Estructura de respuesta de usuario no válida")
-			return
-		}
-
-		// Buscar el ID del Rol en la tabla Roles
-		rolNombre := body_ingreso["rol"].(string) // Extrae el rol enviado en la solicitud
-		var responseRol []byte
-		responseRol, err = services.Metodo_get("API_CRUD", "/v1/Roles?query=nombre:", rolNombre)
-
-		if err != nil {
-			fmt.Println("Error al obtener el rol:", err)
-			return
-		}
-
-		var rolResponse map[string]interface{}
-		if err := json.Unmarshal(responseRol, &rolResponse); err != nil {
-			fmt.Println("Error al parsear respuesta de roles:", err)
-			return
-		}
-
-		var rolID float64
-		if roles, ok := rolResponse["Data"].([]interface{}); ok && len(roles) > 0 {
-			if rolData, exists := roles[0].(map[string]interface{}); exists {
-				rolID = rolData["Id"].(float64)
-			}
-		} else {
-			fmt.Println("Error: No se encontró el rol en la base de datos")
-			return
-		}
-
-		// Crear registro en RolesUsuario
-		jsonRolUsuario := map[string]interface{}{
-			"FkUsuarioRoles": map[string]interface{}{
-				"Id": usuarioID,
-			},
-			"FkRolesUsuario": map[string]interface{}{
-				"Id": rolID,
-			},
-		}
-
-		json_rol_usuario_byte, _ := json.Marshal(jsonRolUsuario)
-		responseRolUsuario, _ = services.Metodo_post("API_CRUD", "/v1/Roles_Usuario", json_rol_usuario_byte)
-
-		fmt.Println("Respuesta de la API (RolesUsuario):", string(responseRolUsuario))
-	}
-
-	c.Data["json"] = map[string]interface{}{
-		"Message": "¡Usuario creado exitosamente!",
-	}
-	c.ServeJSON()
-}
-
-// Post ...
-// @Title Login
-// @Description create Usuario_controller.Go
-// @Param	body		body 	models.Usuario_controller.Go	true		"body for Usuario_controller.Go content"
-// @Success 201 {object} models.Usuario_controller.Go
-// @Failure 403 body is empty
-// @router /auth/login [post]
-func (c *AuthController) Login() {
-	fmt.Println("Función POST: Login")
-	var body map[string]interface{}
-
-	// Leer el cuerpo de la solicitud
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		handleError(c, "Solicitud inválida", err)
-		return
-	}
-	fmt.Println("Datos de login recibidos:", body)
-
-	// Validar que se hayan enviado el correo y la contraseña
-	correo, ok := body["Email"].(string)
-	if !ok || correo == "" {
-		handleError(c, "El campo 'CorreoElectronico' es obligatorio", nil)
-		return
-	}
-	password, ok := body["Contraseña"].(string)
-	if !ok || password == "" {
-		handleError(c, "El campo 'Contraseña' es obligatorio", nil)
+		c.ServeJSON()
 		return
 	}
 
-	// Buscar usuario por correo
-	usuario, err := obtenerUsuarioPorCorreo(correo)
+	// Convertir body_ingresa a JSON antes de enviarlo a Metodo_post
+	json_usuario_byte, err := json.Marshal(body_ingresa)
 	if err != nil {
-		handleError(c, "El usuario no existe", err)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al convertir datos a JSON",
+		}
+		c.ServeJSON()
 		return
 	}
-	fmt.Println("Usuario encontrado:", usuario)
 
-	usuarioID, ok := usuario["Id"].(float64)
+	// Llamar a Metodo_post para crear el usuario en CRUD_SPY
+	response_usuario, err := services.Metodo_post("CRUD_SPY", "Usuarios", json_usuario_byte)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al crear el usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Decodificar la respuesta del servicio
+	var temporal_usuario2 map[string]interface{}
+	if err := json.Unmarshal(response_usuario, &temporal_usuario2); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 📌 IMPRIMIR LA RESPUESTA COMPLETA
+	fmt.Println("Respuesta del servidor CRUD_SPY:", temporal_usuario2)
+
+	// Validar si "data" está presente en la respuesta
+	data, ok := temporal_usuario2["data"].(map[string]interface{})
 	if !ok {
-		handleError(c, "No se pudo obtener el ID del usuario", nil)
-		return
-	}
-	fmt.Println("ID del usuario:", int(usuarioID))
-
-	// Obtener el ID de la credencial asociada
-	credencialID, err := obtenerFkCredencialID(usuario)
-	if err != nil {
-		handleError(c, "No se encontraron credenciales asociadas", err)
-		return
-	}
-	fmt.Println("ID de la credencial:", credencialID)
-
-	// Obtener la credencial (incluyendo la contraseña hasheada)
-	credencial, err := obtenerCredencialPorID(credencialID)
-	if err != nil {
-		handleError(c, "Error al obtener la credencial del usuario", err)
-		return
-	}
-	fmt.Println("Credencial obtenida:", credencial)
-
-	// Comparar la contraseña ingresada con la almacenada
-	storedPass, ok := credencial["Contraseña"].(string)
-	if !ok || storedPass == "" {
-		handleError(c, "La contraseña almacenada es inválida", nil)
-		return
-	}
-	err = bcrypt.CompareHashAndPassword([]byte(storedPass), []byte(password))
-	if err != nil {
-		handleError(c, "Credenciales inválidas", err)
-		return
-	}
-	usuarioIDStr := fmt.Sprintf("%.0f", usuarioID) // Convertir a string
-
-	// Primera consulta: Obtener FkRolesUsuario desde Roles_Usuario**
-	rolesUsuarioResponse, err := services.Metodo_get("API_CRUD", "/v1/Roles_Usuario?query=FkUsuarioRoles.Id:", usuarioIDStr)
-	if err != nil {
-		handleError(c, "Error al obtener el rol del usuario", err)
-		return
-	}
-	fmt.Println("Este es el response de la API Roles_Usuario", string(rolesUsuarioResponse))
-
-	var fkRolesUsuario string
-	var rolesUsuarioData map[string]interface{}
-	if err := json.Unmarshal(rolesUsuarioResponse, &rolesUsuarioData); err == nil {
-		if roles, ok := rolesUsuarioData["Data"].([]interface{}); ok && len(roles) > 0 {
-			if role, valid := roles[0].(map[string]interface{}); valid {
-				if fkRolObj, exists := role["FkRolesUsuario"].(map[string]interface{}); exists {
-					if fkRolID, ok := fkRolObj["Id"].(float64); ok {
-						fkRolesUsuario = fmt.Sprintf("%.0f", fkRolID)
-					}
-				}
-			}
+		c.Data["json"] = map[string]interface{}{
+			"Success":     false,
+			"Status":      500,
+			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
+			"RawResponse": temporal_usuario2, // 🔍 Incluir la respuesta completa para depuración
 		}
-	}
-
-	fmt.Println("este es el fkRolesUsuario: ", fkRolesUsuario)
-
-	if fkRolesUsuario == "" {
-		handleError(c, "No se encontró una relación de rol para el usuario", nil)
-		return
-	}
-	fmt.Println("FkRolesUsuario obtenido:", fkRolesUsuario)
-
-	// Segunda consulta: Obtener Nombre del rol desde Roles
-	rolesResponse, err := services.Metodo_get("API_CRUD", "/v1/Roles?query=Id:", fkRolesUsuario)
-	if err != nil {
-		handleError(c, "Error al obtener el nombre del rol", err)
+		c.ServeJSON()
 		return
 	}
 
-	var rolUsuario string
-	var rolesData map[string]interface{}
-	if err := json.Unmarshal(rolesResponse, &rolesData); err == nil {
-		if roles, ok := rolesData["Data"].([]interface{}); ok && len(roles) > 0 {
-			if role, valid := roles[0].(map[string]interface{}); valid {
-				if nombreRol, exists := role["Nombre"].(string); exists {
-					rolUsuario = nombreRol
-				}
-			}
-		}
+	// Respuesta JSON optimizada
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  201,
+		"type":    "post",
+		"Message": "Creacion existosa",
+		"Data":    data,
 	}
 
-	if rolUsuario == "" {
-		handleError(c, "No se encontró el nombre del rol asociado", nil)
-		return
-	}
-	fmt.Println("Rol del usuario:", rolUsuario)
-	// Si la validación es correcta, generar un token JWT
-	token, err := jwt.GenerateJWT(int(usuarioID), correo, rolUsuario) //  generar un token JWT basado en los datos del usuario
-	if err != nil {
-		handleError(c, "Error al generar token", err)
-		return
-	}
-	fmt.Println(token)
-
-	fmt.Println("Login exitoso para el usuario:", correo)
-	c.Data["json"] = map[string]string{
-		"mensaje": "Login exitoso",
-		"token":   token,
-	}
-	c.ServeJSON()
-}
-
-// @Title ValidarToken
-// @Description Verifica si el token es válido
-// @Param	body	body	map[string]string	true	"Token y correo electrónico"
-// @Success 200 {object} map[string]string "Token válido"
-// @Failure 400 "Token inválido"
-// @Failure 403 "Faltan parámetros"
-// @router /validartoken [post]
-func (c *AuthController) ValidarToken() {
-	fmt.Println("Función POST: Validar Token")
-
-	var datos map[string]string
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &datos); err != nil {
-		handleError(c, "Error al leer el cuerpo de la solicitud", err)
-		return
-	}
-
-	tokenIngresado := datos["token"]
-	correo := datos["correo"]
-	fmt.Println("token ingresado: ", tokenIngresado, "correo ingresado: ", correo)
-
-	if tokenIngresado == "" || correo == "" {
-		handleError(c, "Debe proporcionar el token y el correo electrónico", nil)
-		return
-	}
-
-	usuario, err := obtenerUsuarioPorCorreo(correo)
-	if err != nil {
-		handleError(c, "El usuario no existe", err)
-		return
-	}
-
-	credencialID, err := obtenerFkCredencialID(usuario)
-	if err != nil {
-		handleError(c, "El usuario no tiene credenciales asociadas", err)
-		return
-	}
-	fmt.Println("ID de la credencial: ", credencialID)
-
-	credencial, err := obtenerCredencialPorID(credencialID)
-	if err != nil {
-		handleError(c, "Error al obtener la credencial del usuario", err)
-		return
-	}
-	fmt.Println("Esta es la credencial actual: ", credencial)
-
-	tokenGuardado, tieneTokenGuardado := credencial["Token"].(string)
-	if !tieneTokenGuardado {
-		handleError(c, "No hay token almacenado para este usuario", nil)
-		return
-	}
-
-	if !services.VerificarToken(tokenIngresado, tokenGuardado) {
-		handleError(c, "Token inválido o expirado", nil)
-		return
-	}
-	fmt.Println("Token ingresado:", tokenIngresado)
-	fmt.Println("Token guardado:", tokenGuardado)
-
-	fmt.Println("Token válido, procediendo con el cambio de contraseña...")
-
-	c.Data["json"] = map[string]string{"mensaje": "Token válido"}
 	c.ServeJSON()
 }
 
@@ -442,7 +135,66 @@ func (c *AuthController) ValidarToken() {
 // @Failure 403 :id is empty
 // @router /:id [get]
 func (c *AuthController) GetOne() {
-	
+	id_ingreso := c.Ctx.Input.Param(":id") // para capturar el parametro del url /id
+	// println("ese es el id: ", id_ingreso)
+	//----------------------------------------------------------------------------------------
+	// println("PASO 1")
+	//asignacion de datos al body
+	// Obtener datos del usuario desde el servicio externo
+	body, err := services.Metodo_get("CRUD_SPY", "Usuarios", id_ingreso)
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener el usuario o el usuario no existe",
+		}
+		c.ServeJSON()
+		return
+	}
+	// println("PASO 1.1")
+	//----------------------------------------------------------------------------------------
+	// println("PASO 2")
+	// Decodificar JSON
+	var userData map[string]interface{}
+	if err := json.Unmarshal(body, &userData); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+	// println("PASO 2.1")
+	// fmt.Println("Respuesta del servicio:", userData)
+
+	// Extraer y validar solo los datos necesarios
+	// El JSON que esperas es un array de objetos
+	usuario := map[string]interface{}{
+		"Id":                   userData["data"].(map[string]interface{})["Id"],
+		"Nombres":              userData["data"].(map[string]interface{})["Nombres"],
+		"Apellidos":            userData["data"].(map[string]interface{})["Apellidos"],
+		"NumeroIdentificacion": userData["data"].(map[string]interface{})["NumeroIdentificacionUsuarios"],
+		"Email":                userData["data"].(map[string]interface{})["Email"],
+		"Telefono":             userData["data"].(map[string]interface{})["Telefono"],
+		"Direccion":            userData["data"].(map[string]interface{})["Direccion"],
+		"IdRolesFk":            userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
+	}
+	// jsonData2, _ := json.MarshalIndent(usuario, "", "  ")
+	// println("PASO 2.2")
+	// println("Respuesta del servicio:", string(jsonData2))
+
+	//----------------------------------------------------------------------------------------
+	// println("PASO 3")
+	// Respuesta JSON optimizada
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    usuario,
+	}
+	// println("PASO 3.1")
+	c.ServeJSON()
 }
 
 // GetAll ...
@@ -458,7 +210,80 @@ func (c *AuthController) GetOne() {
 // @Failure 403
 // @router / [get]
 func (c *AuthController) GetAll() {
+	// Obtener todos los usuarios desde el servicio externo
+	body, err := services.Metodo_get("CRUD_SPY", "Usuarios", "")
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener los usuarios",
+		}
+		c.ServeJSON()
+		return
+	}
 
+	// Decodificar JSON
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Validar si "data" contiene usuarios
+	usersArray, ok := responseData["data"].([]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Estructura de datos incorrecta",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Procesar cada usuario en la lista
+	var usuarios []map[string]interface{}
+	for _, item := range usersArray {
+		user, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Validar y extraer `IdRolesFk` si existe
+		idRolesFk := 0
+		if idRoles, ok := user["IdRolesFk"].(map[string]interface{}); ok {
+			if id, ok := idRoles["Id"].(float64); ok {
+				idRolesFk = int(id)
+			}
+		}
+
+		// Agregar usuario procesado a la lista final
+		usuarios = append(usuarios, map[string]interface{}{
+			"Id":                   user["Id"],
+			"Nombres":              user["Nombres"],
+			"Apellidos":            user["Apellidos"],
+			"NumeroIdentificacion": user["NumeroIdentificacionUsuarios"],
+			"Email":                user["Email"],
+			"Telefono":             user["Telefono"],
+			"Direccion":            user["Direccion"],
+			"IdRolesFk":            idRolesFk,
+		})
+	}
+
+	// Respuesta JSON optimizada
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    usuarios,
+		"Total":   len(usuarios), // Indica cuántos usuarios se obtuvieron
+	}
+	c.ServeJSON()
 }
 
 // Put ...
@@ -470,182 +295,80 @@ func (c *AuthController) GetAll() {
 // @Failure 403 :id is not int
 // @router /:id [put]
 func (c *AuthController) Put() {
+	id_ingreso := c.Ctx.Input.Param(":id") // Captura el ID desde la URL
 
-}
-
-// GeneraryEnviarToken
-// @Title GeneraryEnviarToken
-// @Description update the Usuario_controller.Go
-// @Param	id		path 	string	true		"The id you want to update"
-// @Param	body		body 	models.Usuario_controller.Go	true		"body for Usuario_controller.Go content"
-// @Success 200 {object} models.Usuario_controller.Go
-// @Failure 403 :id is not int
-// @router /:correo [put]
-func (c *AuthController) GeneraryEnviarToken() {
-	fmt.Println("Función PUT")
-	var body map[string]interface{}
-
-	// Leer el cuerpo de la solicitud
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		handleError(c, "Solicitud inválida", err)
-		return
-	}
-	fmt.Println("Este es el body de ingreso:", body)
-
-	// Validar y obtener correo
-	correo, ok := body["CorreoElectronico"].(string)
-	if !ok {
-		handleError(c, "Campo CorreoElectronico inválido", nil)
-		return
-	}
-
-	// Buscar usuario por correo
-	usuario, err := obtenerUsuarioPorCorreo(correo)
-	if err != nil {
-		handleError(c, "El usuario no existe", err)
-		return
-	}
-	fmt.Println("Usuario encontrado:", usuario)
-
-	// Obtener ID de credencial
-	credencialID, err := obtenerFkCredencialID(usuario)
-	if err != nil {
-		handleError(c, "El usuario no tiene credenciales asociadas", err)
-		return
-	}
-	fmt.Println("ID de la credencial:", credencialID)
-
-	// Generar y almacenar token
-	token, hashedToken, err := services.GenerarToken()
-	if err != nil {
-		handleError(c, "Error al generar el token de recuperación", err)
-		return
-	}
-	fmt.Println("Token generado:", token)
-
-	// Actualizar la credencial con el token
-	if err := actualizarTokenCredencial(credencialID, hashedToken); err != nil {
-		handleError(c, "Error al guardar el token de recuperación", err)
-		return
-	}
-
-	// Enviar correo con el token
-	if err := services.EnviarCorreo(correo, token); err != nil {
-		handleError(c, "Error al enviar el correo de recuperación", err)
-		return
-	}
-
-	// Enviar respuesta exitosa
-	c.Data["json"] = map[string]string{"mensaje": "Correo de recuperación enviado correctamente"}
-	c.ServeJSON()
-
-}
-
-// ActualizarContraseña
-// @Title ActualizarContraseña
-// @Description update the Usuario_controller.Go
-// @Param	id		path 	string	true		"The id you want to update"
-// @Param	body		body 	models.Usuario_controller.Go	true		"body for Usuario_controller.Go content"
-// @Success 200 {object} models.Usuario_controller.Go
-// @Failure 403 :id is not int
-// @router /recuperar/:token [put]
-func (c *AuthController) ActualizarContraseña() {
-	fmt.Println("Función PUT: Actualizar Contraseña")
-	var body map[string]interface{}
-	var responseCredencial []byte
-
-	// Leer el cuerpo de la solicitud
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		handleError(c, "Solicitud inválida", err)
-		return
-	}
-	fmt.Println("Este es el body de ingreso:", body)
-
-	// Validar que la nueva contraseña esté en la solicitud
-	nuevaContraseña, tieneNuevaContraseña := body["contraseña"].(string)
-	if !tieneNuevaContraseña {
-		handleError(c, "Debe proporcionar la nueva contraseña", nil)
-		return
-	}
-	fmt.Println("Nueva contraseña:", nuevaContraseña)
-
-	// Validar correo
-	correo, ok := body["correo"].(string)
-	if !ok {
-		handleError(c, "Campo 'correo' inválido o no proporcionado", nil)
-		return
-	}
-
-	// Buscar usuario por correo
-	usuario, err := obtenerUsuarioPorCorreo(correo)
-	if err != nil {
-		handleError(c, "El usuario no existe", err)
-		return
-	}
-	fmt.Println("Usuario encontrado:", usuario)
-
-	// Obtener ID de credencial actual
-	credencialID, err := obtenerFkCredencialID(usuario)
-	if err != nil {
-		handleError(c, "El usuario no tiene credenciales asociadas", err)
-		return
-	}
-	fmt.Println("ID de la credencial actual:", credencialID)
-
-	// Desactivar la credencial actual
-	if err := desactivarCredencial(credencialID); err != nil {
-		handleError(c, "Error al desactivar la contraseña actual", err)
-		return
-	}
-	fmt.Println("Credencial actual desactivada")
-
-	// Hashear la contraseña
-	hashedNewPass, err := services.HashContraseña(nuevaContraseña)
-	if err != nil {
-		fmt.Println(err)
-		c.Data["json"] = map[string]interface{}{"error": "Error interno al procesar la contraseña"}
+	// Decodificar el cuerpo de la solicitud
+	var body_actualizacion map[string]interface{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_actualizacion); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Error al procesar el cuerpo de la solicitud",
+		}
 		c.ServeJSON()
 		return
 	}
 
-	// Crear nueva credencial con la nueva contraseña
-	jsonCredencial := map[string]interface{}{
-		"contraseña": hashedNewPass,
-	}
-	fmt.Println("JSON para credenciales:", jsonCredencial)
-
-	jsonCredencialByte, _ := json.Marshal(jsonCredencial)
-	responseCredencial, err = services.Metodo_post("API_CRUD", "/v1/Credenciales", jsonCredencialByte)
+	// Convertir body_actualizacion a JSON antes de enviarlo a Metodo_put
+	json_usuario_byte, err := json.Marshal(body_actualizacion)
 	if err != nil {
-		handleError(c, "Error al crear la nueva credencial", err)
-		return
-	}
-	fmt.Println("Respuesta de la API (Credenciales):", string(responseCredencial))
-
-	// Obtener el ID de la nueva credencial
-	var credencialResponse map[string]interface{}
-	if err := json.Unmarshal(responseCredencial, &credencialResponse); err != nil {
-		handleError(c, "Error al parsear la respuesta de credenciales", err)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al convertir datos a JSON",
+		}
+		c.ServeJSON()
 		return
 	}
 
-	// Extraer el ID de la nueva credencial
-	newCredencialID, ok := credencialResponse["Data"].(map[string]interface{})["Id"].(float64)
+	// Llamar a Metodo_put para actualizar el usuario en CRUD_SPY
+	response_usuario, err := services.Metodo_put("CRUD_SPY", "Usuarios", id_ingreso, json_usuario_byte)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al actualizar el usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Decodificar la respuesta del servicio
+	var temporal_usuario map[string]interface{}
+	if err := json.Unmarshal(response_usuario, &temporal_usuario); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 📌 IMPRIMIR LA RESPUESTA COMPLETA
+	fmt.Println("Respuesta del servidor CRUD_SPY:", temporal_usuario)
+
+	// Validar si "data" está presente en la respuesta
+	data, ok := temporal_usuario["data"].(map[string]interface{})
 	if !ok {
-		handleError(c, "No se encontró el ID en la respuesta de Credenciales", nil)
+		c.Data["json"] = map[string]interface{}{
+			"Success":     false,
+			"Status":      500,
+			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
+			"RawResponse": temporal_usuario, // 🔍 Incluir la respuesta completa para depuración
+		}
+		c.ServeJSON()
 		return
 	}
-	fmt.Println("Nuevo ID de credencial:", newCredencialID)
 
-	// Asociar nueva credencial al usuario
-	if err := actualizarFkCredencialUsuario(usuario["Id"], newCredencialID); err != nil {
-		handleError(c, "Error al actualizar la credencial del usuario", err)
-		return
+	// Respuesta JSON optimizada
+	c.Data["json"] = map[string]interface{}{
+		"Succes":  true,
+		"Status":  200,
+		"type":    "put",
+		"Message": "Actualización exitosa",
+		"Data":    data,
 	}
-
-	// Respuesta de éxito
-	fmt.Println("Contraseña actualizada con éxito")
-	c.Data["json"] = map[string]string{"mensaje": "Contraseña actualizada con éxito"}
 	c.ServeJSON()
 }
 
@@ -657,186 +380,88 @@ func (c *AuthController) ActualizarContraseña() {
 // @Failure 403 id is empty
 // @router /:id [delete]
 func (c *AuthController) Delete() {
-	// Obtener el ID del usuario de la URL
-	idUsuario := c.Ctx.Input.Param(":id")
-	fmt.Println("ID de usuario a eliminar:", idUsuario)
+	id_ingreso := c.Ctx.Input.Param(":id") // Capturar ID de la URL
 
-	// Verificar si el usuario existe en la base de datos
-	responseUsuario, err := services.Metodo_get("API_CRUD", "/v1/Usuario/", idUsuario)
-	if err != nil || len(responseUsuario) == 0 {
-		fmt.Println("Error: Usuario no encontrado o fallo en la consulta")
+	if id_ingreso == "" {
 		c.Data["json"] = map[string]interface{}{
-			"error": "Usuario no encontrado",
+			"Success": false,
+			"Status":  400,
+			"Message": "ID no proporcionado",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	// Extraer información del usuario
-	var usuario map[string]interface{}
-	if err := json.Unmarshal(responseUsuario, &usuario); err != nil {
-		fmt.Println("Error al parsear respuesta de usuario:", err)
-		return
-	}
-
-	// Extraer el ID de la credencial asociada
-	var credencialID float64
-	if data, ok := usuario["Data"].(map[string]interface{}); ok {
-		if fkCredencial, exists := data["FkCredencial"].(map[string]interface{}); exists {
-			credencialID = fkCredencial["Id"].(float64)
-		}
-	} else {
-		fmt.Println("Error: No se encontró la credencial asociada")
-	}
-
-	// Obtener los roles del usuario
-	rolesResponse, err := services.Metodo_get("API_CRUD", "/v1/Roles_Usuario?query=FkUsuarioRoles.Id:", idUsuario)
-	if err != nil {
-		fmt.Println("Error al obtener roles del usuario:", err)
-	} else {
-		// Extraer IDs de los roles y eliminarlos uno por uno
-		var rolesResponseData map[string]interface{}
-		if err := json.Unmarshal(rolesResponse, &rolesResponseData); err == nil {
-			if rolesData, ok := rolesResponseData["Data"].([]interface{}); ok {
-				for _, r := range rolesData {
-					if role, valid := r.(map[string]interface{}); valid {
-						if roleID, exists := role["Id"].(float64); exists {
-							roleIDStr := fmt.Sprintf("%.0f", roleID)
-							_, err = services.Metodo_delete("API_CRUD", "/v1/Roles_Usuario/", roleIDStr)
-							if err != nil {
-								fmt.Println("Error al eliminar el rol:", roleIDStr, err)
-							}
-						}
-					}
-				}
-			} else {
-				fmt.Println("Error: Formato de respuesta inesperado en roles.")
-			}
-		} else {
-			fmt.Println("Error al parsear la respuesta de roles:", err)
-		}
-	}
-
-	//Eliminar el usuario de la tabla Usuario
-	_, err = services.Metodo_delete("API_CRUD", "/v1/Usuario/", idUsuario)
-	if err != nil {
-		fmt.Println("Error al eliminar usuario:", err)
+	// 📌 Obtener el usuario antes de modificarlo
+	get_inicial, err := services.Metodo_get("CRUD_SPY", "Usuarios", id_ingreso)
+	if err != nil || len(get_inicial) == 0 {
+		fmt.Println("Usuario no encontrado en el GET inicial.")
 		c.Data["json"] = map[string]interface{}{
-			"error": "No se pudo eliminar el usuario",
+			"Success": false,
+			"Status":  404,
+			"Message": "Usuario no encontrado",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	// Eliminar la credencial asociada
-	if credencialID > 0 {
-		_, err = services.Metodo_delete("API_CRUD", "/v1/Credenciales/", fmt.Sprintf("%.0f", credencialID))
-		if err != nil {
-			fmt.Println("Error al eliminar credenciales del usuario:", err)
+	// Decodificar JSON recibido
+	var usuarioActual map[string]interface{}
+	if err := json.Unmarshal(get_inicial, &usuarioActual); err != nil {
+		fmt.Println("Error al procesar el usuario:", err)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar el usuario",
 		}
+		c.ServeJSON()
+		return
 	}
-	// **Respuesta exitosa**
-	c.Data["json"] = map[string]interface{}{"message": "Usuario eliminado exitosamente"}
-	c.ServeJSON()
-}
 
+	// 📌 Verificar que el usuario tiene la clave "Estado"
+	if _, ok := usuarioActual["data"].(map[string]interface{})["Estado"]; !ok {
+		fmt.Println("El usuario no tiene un campo 'Estado'.")
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "El usuario no tiene un campo 'Estado'.",
+		}
+		c.ServeJSON()
+		return
+	}
 
-// Funciones auxiliares
-// Funciones auxiliares para obtener datos de usuario y credenciales
-func obtenerUsuarioPorCorreo(correo string) (map[string]interface{}, error) {
-	queryParam := "?query=Email:" + correo
-	responseUsuario, err := services.Metodo_get("CRUD_SPY", "Usuarios", queryParam)
+	// 📌 Crear JSON con la actualización del estado
+	json_nuevo := map[string]interface{}{
+		"Estado": false, // Solo cambiamos el estado a false
+	}
+
+	// Convertir a JSON
+	json_byte, _ := json.Marshal(json_nuevo)
+
+	// 📌 Imprimir JSON antes de enviarlo
+	fmt.Println("📤 JSON a enviar en PUT:", string(json_byte))
+
+	// Llamar a Metodo_put para actualizar el estado
+	response_put, err := services.Metodo_put("CRUD_SPY", "Usuarios", id_ingreso, json_byte)
 	if err != nil {
-		return nil, err
+		fmt.Println("Error en Metodo_put:", err)
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al deshabilitar el usuario",
+		}
+		c.ServeJSON()
+		return
 	}
 
-	var resultado map[string]interface{}
-	if err := json.Unmarshal(responseUsuario, &resultado); err != nil {
-		return nil, err
+	// 📌 Ver respuesta del CRUD_SPY
+	fmt.Println("Respuesta del CRUD_SPY al PUT:", string(response_put))
+
+	// Confirmar la actualización
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Usuario deshabilitado correctamente",
 	}
-
-	data, ok := resultado["Data"].([]interface{})
-	if !ok || len(data) == 0 {
-		return nil, errors.New("usuario no encontrado")
-	}
-	return data[0].(map[string]interface{}), nil
-}
-
-// Función para obtener el ID de la credencial asociada al usuario
-// Esta función asume que el usuario tiene una relación con la credencial
-func obtenerFkCredencialID(Usuarios map[string]interface{}) (string, error) {
-	fkCredencial, ok := Usuarios["IdContrasenafk"].(map[string]interface{})
-	if !ok {
-		return "", errors.New("no se encontró FkCredencial")
-	}
-
-	credencialID, ok := fkCredencial["Id"].(float64)
-	if !ok {
-		return "", errors.New("id de credencial inválido")
-	}
-	credencialIDInt := int(credencialID)
-	return strconv.Itoa(credencialIDInt), nil
-
-}
-
-// Función para actualizar el token de la credencial
-// Esta función asume que el ID de la credencial es válido y existe en la base de datos
-func actualizarTokenCredencial(credencialID string, hashedToken string) error {
-	updateData := map[string]interface{}{"token": hashedToken}
-	updateJSON, _ := json.Marshal(updateData)
-	_, err := services.Metodo_patch("CRUD_SPY", "Credenciales", credencialID, updateJSON)
-	return err
-}
-
-// Función para obtener la credencial por su ID
-func obtenerCredencialPorID(credencialID string) (map[string]interface{}, error) {
-	response, err := services.Metodo_get("CRUD_SPY", "Credenciales/"+credencialID, "")
-	if err != nil {
-		return nil, err
-	}
-
-	var resultado map[string]interface{}
-	if err := json.Unmarshal(response, &resultado); err != nil {
-		return nil, err
-	}
-
-	data, ok := resultado["Data"].(map[string]interface{})
-	if !ok {
-		return nil, errors.New("credencial no encontrada")
-	}
-
-	return data, nil
-}
-
-// Función para desactivar la credencial
-// Esta función asume que el ID de la credencial es válido y existe en la base de datos
-func desactivarCredencial(credencialID string) error {
-	updateData := map[string]interface{}{"activo": false, "token": ""}
-	updateJSON, _ := json.Marshal(updateData)
-	campoactivo, err := services.Metodo_patch("CRUD_SPY", "Credenciales", credencialID, updateJSON)
-	fmt.Println("Este es el reponse de la actualizacion del campo activo:", string(campoactivo))
-	return err
-}
-
-// Función para actualizar la credencial del usuario
-// Esta función asume que el ID del usuario y el nuevo ID de credencial son válidos
-func actualizarFkCredencialUsuario(usuarioID, newCredencialID interface{}) error {
-	updateUserData := map[string]interface{}{
-		"FkCredencial": map[string]interface{}{"Id": newCredencialID},
-	}
-	updateUserJSON, _ := json.Marshal(updateUserData)
-	fmt.Println("JSON enviado al PATCH de usuario:", string(updateUserJSON))
-
-	actualizaruser, err := services.Metodo_patch("API_CRUD", "/v1/Usuario", fmt.Sprintf("%v", usuarioID), updateUserJSON)
-	fmt.Println("este es el respone de actulizar id de usuario", string(actualizaruser))
-	return err
-
-}
-
-// Función para manejar errores y enviar respuestas JSON
-// Esta función se encarga de establecer el estado de la respuesta y enviar un mensaje de error en formato JSON
-func handleError(c *AuthController, mensaje string, err error) {
-	c.Ctx.Output.SetStatus(400)
-	c.Data["json"] = map[string]string{"error": mensaje}
 	c.ServeJSON()
 }
