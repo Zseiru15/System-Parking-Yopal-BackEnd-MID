@@ -3,9 +3,11 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
+
 )
 
 // UsuariosController operations for Usuarios
@@ -31,67 +33,46 @@ func (c *UsuariosController) URLMapping() {
 // @router / [post]
 func (c *UsuariosController) Post() {
 	var body_ingresa map[string]interface{}
+	
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Error al procesar el cuerpo de la solicitud",
-		}
-		c.ServeJSON()
-		return
-	}
+		fmt.Println("Error al procesar el cuerpo de la solicitud:", err)
 
-	// Convertir body_ingresa a JSON antes de enviarlo a Metodo_post
-	json_usuario_byte, err := json.Marshal(body_ingresa)
-	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al convertir datos a JSON",
-		}
-		c.ServeJSON()
-		return
 	}
-
-	// Llamar a Metodo_post para crear el usuario en CRUD_SPY
-	response_usuario, err := services.Metodo_post("CRUD_SPY", "Usuarios", json_usuario_byte)
-	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al crear el usuario",
-		}
-		c.ServeJSON()
-		return
+	jsoncontasena := map[string]interface{}{
+		"Contrasena": body_ingresa["password"],
 	}
+	json_contrasena_byte, _ := json.Marshal(jsoncontasena)
 
-	// Decodificar la respuesta del servicio
-	var temporal_usuario2 map[string]interface{}
-	if err := json.Unmarshal(response_usuario, &temporal_usuario2); err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al procesar la respuesta del servidor",
-		}
-		c.ServeJSON()
-		return
+	body_contrasena_byte, _ := services.Metodo_post("CRUD_SPY", "Credenciales", json_contrasena_byte)
+
+	fmt.Println("Respuesta del servicio:", string(body_contrasena_byte))
+
+	body_contrasena_json, _ := services.ProcesarJson(body_contrasena_byte)
+	Id_contrasena := body_contrasena_json["data"].(map[string]interface{})["Id"]
+	fmt.Println("Id de la contraseña:", Id_contrasena)
+	Id_string := fmt.Sprintf("%v", Id_contrasena)
+	Id_contrasena_int, _ := strconv.Atoi(Id_string)
+
+	rol := body_ingresa["type"].(string)
+
+	Id_rol := services.ObtenerIDRol(rol)
+	phone:=  body_ingresa["phone"]
+	phone_string := fmt.Sprintf("%v", phone)
+	phone_float,_:= 	strconv.ParseFloat(phone_string, 64)
+	
+	json_usuario := map[string]interface{}{
+		"Nombres":                      body_ingresa["firstName"],
+		"Apellidos":                    body_ingresa["lastName"],
+		"NumeroIdentificacionUsuarios": body_ingresa["documentNumber"],
+		"Telefono":                     phone_float,
+		"Email":                        body_ingresa["email"],
+		"IdContrasenaFk":               map[string]interface{}{"Id": Id_contrasena_int},
+		"IdRolesFk":               map[string]interface{}{"Id": Id_rol},
 	}
-
-	// 📌 IMPRIMIR LA RESPUESTA COMPLETA
-	fmt.Println("Respuesta del servidor CRUD_SPY:", temporal_usuario2)
-
-	// Validar si "data" está presente en la respuesta
-	data, ok := temporal_usuario2["data"].(map[string]interface{})
-	if !ok {
-		c.Data["json"] = map[string]interface{}{
-			"Success":     false,
-			"Status":      500,
-			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
-			"RawResponse": temporal_usuario2, // 🔍 Incluir la respuesta completa para depuración
-		}
-		c.ServeJSON()
-		return
-	}
+	
+	json_usuario_byte,_ := json.Marshal(json_usuario)
+	response_usuario,_ := services.Metodo_post("CRUD_SPY", "Usuarios", json_usuario_byte)
+	fmt.Println("Respuesta del servicio:", string(response_usuario))
 
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
@@ -99,7 +80,7 @@ func (c *UsuariosController) Post() {
 		"Status":  201,
 		"type":    "post",
 		"Message": "Creacion existosa",
-		"Data":    data,
+		"Data":    json_usuario,
 	}
 
 	c.ServeJSON()

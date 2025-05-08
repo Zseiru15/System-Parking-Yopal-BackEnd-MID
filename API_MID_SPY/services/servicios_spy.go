@@ -52,13 +52,30 @@ func ProcesarJson(datos []byte) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func Metodo_post(nombre_servicio string, endpoint string, data []byte) ([]byte, error) {
+func ObtenerIDRol(rol string) int {
+	id_rol := 0
+
+	switch rol {
+	case "Usuario":
+		id_rol = 1
+	case "Empleado":
+		id_rol = 2
+	case "Administrador":
+		id_rol = 3
+	default:
+		fmt.Println("Rol no reconocido")
+	}
+
+	return id_rol // ✅ correcto porque la función retorna int
+}
+
+func Metodo_post(host string, endpoint string, data []byte) ([]byte, error) {
 	
-	url := beego.AppConfig.String(nombre_servicio) + endpoint // Construir la URL
+	url := beego.AppConfig.String(host) + endpoint // Construir la URL
 	fmt.Println("URL enviada:", url)
 
 	if url == "" {
-		return nil, fmt.Errorf("no se encontró la configuración para %s", nombre_servicio)
+		return nil, fmt.Errorf("no se encontró la configuración para %s", host)
 	}
 
 	// Asegurar que la URL tiene "http://"
@@ -82,7 +99,6 @@ func Metodo_post(nombre_servicio string, endpoint string, data []byte) ([]byte, 
 		// log.Fatal(err)
 	}
 
-	fmt.Println("Respuesta de la API:", string(body))
 
 	return body, nil
 }
