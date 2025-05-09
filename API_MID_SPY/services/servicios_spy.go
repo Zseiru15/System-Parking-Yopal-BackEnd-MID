@@ -26,7 +26,6 @@ import (
 // 11. EnviarCorreo
 // 12. HashContraseña
 
-
 // Mostrar el valor de resultado 1
 func ProcesarJsonArreglos(datos []byte) ([]map[string]interface{}, error) {
 	var result []map[string]interface{}
