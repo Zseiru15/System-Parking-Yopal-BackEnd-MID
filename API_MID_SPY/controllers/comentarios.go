@@ -1,7 +1,10 @@
 package controllers
 
 import (
+	"encoding/json"
+
 	"github.com/astaxie/beego"
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
 )
 
 // ComentariosController operations for Comentarios
@@ -53,7 +56,72 @@ func (c *ComentariosController) GetOne() {
 // @Failure 403
 // @router / [get]
 func (c *ComentariosController) GetAll() {
+	// Obtener todos los usuarios desde el servicio externo
+	body, err := services.Metodo_get("CRUD_SPY", "Comentarios", "")
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener los comentarios",
+		}
+		c.ServeJSON()
+		return
+	}
 
+	// Decodificar JSON
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Validar si "data" contiene usuarios
+	commentsArray, ok := responseData["data"].([]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Estructura de datos incorrecta",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Procesar cada usuario en la lista
+	var comentarios []map[string]interface{}
+	for _, item := range commentsArray {
+		user, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Agregar usuario procesado a la lista final
+		comentarios = append(comentarios, map[string]interface{}{
+			"Foto":             user["IdUsuariosFk"].(map[string]interface{})["Imagen"],
+			"Nombres":         user["IdUsuariosFk"].(map[string]interface{})["Nombres"],
+			"Apellidos":       user["IdUsuariosFk"].(map[string]interface{})["Apellidos"],
+			"Vehiculo":        user["IdVehiculosFk"].(map[string]interface{})["Marca"],
+			"Estacionamiento": user["IdEstacionamientoFk"].(map[string]interface{})["Nombres"],
+			"Comentario":      user["Comentario"],
+			"Calificacion":    user["Calificacion"],
+			"Fecha":           user["FechaRegistro"],
+		})
+	}
+
+	// Respuesta JSON optimizada
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    comentarios,
+		"Total":   len(comentarios), // Indica cuántos usuarios se obtuvieron
+	}
+	c.ServeJSON()
 }
 
 // Put ...

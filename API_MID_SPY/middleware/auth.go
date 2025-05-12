@@ -3,8 +3,9 @@ package middleware
 import (
 	"net/http"
 	"strings"
-	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
+
 	"github.com/astaxie/beego/context"
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
 )
 
 func JWTFilter(ctx *context.Context) {

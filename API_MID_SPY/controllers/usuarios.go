@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/astaxie/beego"
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
-
 )
 
 // UsuariosController operations for Usuarios
@@ -33,11 +33,13 @@ func (c *UsuariosController) URLMapping() {
 // @router / [post]
 func (c *UsuariosController) Post() {
 	var body_ingresa map[string]interface{}
-	
+
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
 		fmt.Println("Error al procesar el cuerpo de la solicitud:", err)
-
+		c.CustomAbort(400, "Cuerpo de la solicitud inválido")
+		return
 	}
+
 	jsoncontasena := map[string]interface{}{
 		"Contrasena": body_ingresa["password"],
 	}
@@ -56,10 +58,10 @@ func (c *UsuariosController) Post() {
 	rol := body_ingresa["type"].(string)
 
 	Id_rol := services.ObtenerIDRol(rol)
-	phone:=  body_ingresa["phone"]
+	phone := body_ingresa["phone"]
 	phone_string := fmt.Sprintf("%v", phone)
-	phone_float,_:= 	strconv.ParseFloat(phone_string, 64)
-	
+	phone_float, _ := strconv.ParseFloat(phone_string, 64)
+
 	json_usuario := map[string]interface{}{
 		"Nombres":                      body_ingresa["firstName"],
 		"Apellidos":                    body_ingresa["lastName"],
@@ -67,12 +69,23 @@ func (c *UsuariosController) Post() {
 		"Telefono":                     phone_float,
 		"Email":                        body_ingresa["email"],
 		"IdContrasenaFk":               map[string]interface{}{"Id": Id_contrasena_int},
-		"IdRolesFk":               map[string]interface{}{"Id": Id_rol},
+		"IdRolesFk":                    map[string]interface{}{"Id": Id_rol},
 	}
-	
-	json_usuario_byte,_ := json.Marshal(json_usuario)
-	response_usuario,_ := services.Metodo_post("CRUD_SPY", "Usuarios", json_usuario_byte)
+
+	json_usuario_byte, _ := json.Marshal(json_usuario)
+	response_usuario, err := services.Metodo_post("CRUD_SPY", "Usuarios", json_usuario_byte)
+	if err != nil {
+		fmt.Println("Error al registrar el usuario:", err)
+		c.CustomAbort(500, "Error interno al registrar usuario")
+		return
+	}
 	fmt.Println("Respuesta del servicio:", string(response_usuario))
+
+	token, err := security.GenerarToken(fmt.Sprintf("%v", body_ingresa["email"]))
+	if err != nil {
+		c.CustomAbort(500, "Error generando token")
+		return
+	}
 
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
@@ -81,6 +94,7 @@ func (c *UsuariosController) Post() {
 		"type":    "post",
 		"Message": "Creacion existosa",
 		"Data":    json_usuario,
+		"token":   token,
 	}
 
 	c.ServeJSON()
@@ -136,7 +150,6 @@ func (c *UsuariosController) GetOne() {
 		"NumeroIdentificacion": userData["data"].(map[string]interface{})["NumeroIdentificacionUsuarios"],
 		"Email":                userData["data"].(map[string]interface{})["Email"],
 		"Telefono":             userData["data"].(map[string]interface{})["Telefono"],
-		"Direccion":            userData["data"].(map[string]interface{})["Direccion"],
 		"IdRolesFk":            userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
 	}
 	// jsonData2, _ := json.MarshalIndent(usuario, "", "  ")
@@ -223,7 +236,6 @@ func (c *UsuariosController) GetAll() {
 			"NumeroIdentificacion": user["NumeroIdentificacionUsuarios"],
 			"Email":                user["Email"],
 			"Telefono":             user["Telefono"],
-			"Direccion":            user["Direccion"],
 			"IdRolesFk":            idRolesFk,
 		})
 	}

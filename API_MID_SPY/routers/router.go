@@ -7,15 +7,9 @@ import (
 
 func init() {
 
-
 	// Resto de tus rutas protegidas...
 	ns := beego.NewNamespace("/v1",
 		// Rutas de autenticación (públicas)
-		beego.NSNamespace("/auth",
-			beego.NSInclude(
-				&controllers.AuthController{},
-			),
-		),
 		// Rutas protegidas
 		beego.NSNamespace("/comentarios",
 			beego.NSInclude(

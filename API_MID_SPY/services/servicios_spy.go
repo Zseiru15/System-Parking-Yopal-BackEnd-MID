@@ -69,7 +69,7 @@ func ObtenerIDRol(rol string) int {
 }
 
 func Metodo_post(host string, endpoint string, data []byte) ([]byte, error) {
-	
+
 	url := beego.AppConfig.String(host) + endpoint // Construir la URL
 	fmt.Println("URL enviada:", url)
 
