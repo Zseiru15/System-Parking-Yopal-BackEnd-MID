@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
@@ -32,71 +33,58 @@ func (c *ParqueaderosController) Post() {
 	var body_ingresa map[string]interface{}
 
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Error al procesar el cuerpo de la solicitud",
-		}
-		c.ServeJSON()
+		fmt.Println("Error al procesar el cuerpo de la solicitud:", err)
+		c.CustomAbort(400, "Cuerpo de la solicitud inválido")
 		return
 	}
 
-	// Convertir body_ingresa a JSON antes de enviarlo a Metodo_post
-	json_parqueadero_byte, err := json.Marshal(body_ingresa)
+	// Validaciones básicas
+	requiredFields := []string{"parkingName", "latitude", "length", "address"}
+	for _, field := range requiredFields {
+		if _, ok := body_ingresa[field]; !ok {
+			c.CustomAbort(400, fmt.Sprintf("Campo obligatorio faltante: %s", field))
+			return
+		}
+	}
+
+	json_parqueadero := map[string]interface{}{
+		"Nombres":    body_ingresa["parkingName"],
+		"Latitud":    body_ingresa["latitude"],
+		"Longitud":   body_ingresa["length"],
+		"Direccion":  body_ingresa["address"],
+		"Carros":     body_ingresa["cars"],
+		"Motos":      body_ingresa["motorcycles"],
+		"Bicicletas": body_ingresa["bicycles"],
+		"Altura":     body_ingresa["height"],
+		"Tipo":       body_ingresa["type"],
+		"Pisos":      body_ingresa["floor"],
+		"Sombra":     body_ingresa["shade"],
+	}
+
+	json_parqueadero_byte, err := json.Marshal(json_parqueadero)
 	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al convertir datos a JSON",
-		}
-		c.ServeJSON()
+		fmt.Println("Error al convertir datos a JSON:", err)
+		c.CustomAbort(500, "Error interno al procesar datos del parqueadero")
 		return
 	}
 
-	// Llamar a Metodo_post para crear el parqueadero en CRUD_SPY
-	response_parqueadero, err := services.Metodo_post("CRUD_SPY", "Parqueaderos", json_parqueadero_byte)
+	response_parqueadero, err := services.Metodo_post("CRUD_SPY", "parqueaderos", json_parqueadero_byte)
 	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al registrar el parqueadero",
-		}
-		c.ServeJSON()
+		fmt.Println("Error al registrar el parqueadero:", err)
+		c.CustomAbort(500, "Error interno al registrar parqueadero")
 		return
 	}
 
-	// Decodificar la respuesta del servicio
-	var respuesta map[string]interface{}
-	if err := json.Unmarshal(response_parqueadero, &respuesta); err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al procesar la respuesta del servidor",
-		}
-		c.ServeJSON()
-		return
-	}
+	fmt.Println("Respuesta del servicio:", string(response_parqueadero))
 
-	// Validar si "data" está presente en la respuesta
-	data, ok := respuesta["data"].(map[string]interface{})
-	if !ok {
-		c.Data["json"] = map[string]interface{}{
-			"Success":     false,
-			"Status":      500,
-			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
-			"RawResponse": respuesta,
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Respuesta JSON optimizada
+	// Respuesta exitosa
+	c.Ctx.Output.SetStatus(201)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  201,
-		"Type":    "post",
-		"Message": "Parqueadero registrado exitosamente",
-		"Data":    data,
+		"type":    "post",
+		"Message": "Parqueadero creado exitosamente",
+		"Data":    json_parqueadero,
 	}
 	c.ServeJSON()
 }

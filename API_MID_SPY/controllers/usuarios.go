@@ -45,7 +45,7 @@ func (c *UsuariosController) Post() {
 	}
 	json_contrasena_byte, _ := json.Marshal(jsoncontasena)
 
-	body_contrasena_byte, _ := services.Metodo_post("CRUD_SPY", "Credenciales", json_contrasena_byte)
+	body_contrasena_byte, _ := services.Metodo_post("CRUD_SPY", "credenciales", json_contrasena_byte)
 
 	fmt.Println("Respuesta del servicio:", string(body_contrasena_byte))
 
@@ -73,7 +73,7 @@ func (c *UsuariosController) Post() {
 	}
 
 	json_usuario_byte, _ := json.Marshal(json_usuario)
-	response_usuario, err := services.Metodo_post("CRUD_SPY", "Usuarios", json_usuario_byte)
+	response_usuario, err := services.Metodo_post("CRUD_SPY", "usuarios", json_usuario_byte)
 	if err != nil {
 		fmt.Println("Error al registrar el usuario:", err)
 		c.CustomAbort(500, "Error interno al registrar usuario")
@@ -97,6 +97,7 @@ func (c *UsuariosController) Post() {
 		"token":   token,
 	}
 
+	c.Ctx.Output.ContentType("application/json") // Opcional pero recomendado
 	c.ServeJSON()
 }
 
