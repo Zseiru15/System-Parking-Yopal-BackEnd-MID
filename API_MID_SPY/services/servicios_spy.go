@@ -68,34 +68,16 @@ func ObtenerIDRol(rol string) int {
 	return id_rol // ✅ correcto porque la función retorna int
 }
 
-func ObtenerIDTipo(tipo string) int {
-	id_tipo := 0
-
-	switch tipo {
-	case "Subterráneo":
-		id_tipo = 1
-	case "Arire Libre":
-		id_tipo = 2
-	default:
-		fmt.Println("Tipo no reconocido")
-	}
-
-	return id_tipo // ✅ correcto porque la función retorna int
-}
-
-func ObtenerIDSombras(sombra string) int {
-	id_sombra := 0
-
+func ObtenerSombraBoolean(sombra string) bool {
 	switch sombra {
-	case "Subterráneo":
-		id_sombra = 1
-	case "Arire Libre":
-		id_sombra = 2
+	case "Si":
+		return true
+	case "No":
+		return false
 	default:
-		fmt.Println("Tipo no reconocido")
+		fmt.Println("⚠️ Opción de sombra no reconocida, se usará false por defecto")
+		return false
 	}
-
-	return id_sombra // ✅ correcto porque la función retorna int
 }
 
 func Metodo_post(host string, endpoint string, data []byte) ([]byte, error) {

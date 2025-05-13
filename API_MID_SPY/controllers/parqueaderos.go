@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
@@ -32,60 +33,94 @@ func (c *ParqueaderosController) URLMapping() {
 func (c *ParqueaderosController) Post() {
 	var body_ingresa map[string]interface{}
 
+	// Leer y verificar el cuerpo de la solicitud
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
-		fmt.Println("Error al procesar el cuerpo de la solicitud:", err)
-		c.CustomAbort(400, "Cuerpo de la solicitud inválido")
+		c.CustomAbort(400, "Cuerpo de la solicitud inválido: "+err.Error())
 		return
 	}
 
-	// Validaciones básicas
-	requiredFields := []string{"parkingName", "latitude", "length", "address"}
+	// Validaciones de campos obligatorios
+	requiredFields := []string{"parkingName", "latitude", "length", "address", "height", "type", "floor", "shade"}
 	for _, field := range requiredFields {
-		if _, ok := body_ingresa[field]; !ok {
-			c.CustomAbort(400, fmt.Sprintf("Campo obligatorio faltante: %s", field))
+		if val, ok := body_ingresa[field]; !ok || val == nil || val == "" {
+			c.CustomAbort(400, fmt.Sprintf("Campo obligatorio faltante o vacío: %s", field))
 			return
 		}
 	}
 
+	sombraStr := fmt.Sprintf("%v", body_ingresa["shade"])
+	shadebool := services.ObtenerSombraBoolean(sombraStr)
+
+	latitude := body_ingresa["latitude"]
+	latitude_string := fmt.Sprintf("%v", latitude)
+	latitude_float, _ := strconv.ParseFloat(latitude_string, 64)
+
+	length := body_ingresa["length"]
+	length_string := fmt.Sprintf("%v", length)
+	length_float, _ := strconv.ParseFloat(length_string, 64)
+
+	cars := body_ingresa["cars"]
+	cars_string := fmt.Sprintf("%v", cars)
+	cars_float, _ := strconv.ParseFloat(cars_string, 64)
+
+	motorcycles := body_ingresa["motorcycles"]
+	motorcycles_string := fmt.Sprintf("%v", motorcycles)
+	motorcycles_float, _ := strconv.ParseFloat(motorcycles_string, 64)
+
+	bicycles := body_ingresa["bicycles"]
+	bicycles_string := fmt.Sprintf("%v", bicycles)
+	bicycles_float, _ := strconv.ParseFloat(bicycles_string, 64)
+
+	floor := body_ingresa["floor"]
+	floor_string := fmt.Sprintf("%v", floor)
+	floor_float, _ := strconv.ParseFloat(floor_string, 64)
+
+	// Armado del JSON para enviar al CRUD
 	json_parqueadero := map[string]interface{}{
-		"Nombres":    body_ingresa["parkingName"],
-		"Latitud":    body_ingresa["latitude"],
-		"Longitud":   body_ingresa["length"],
-		"Direccion":  body_ingresa["address"],
-		"Carros":     body_ingresa["cars"],
-		"Motos":      body_ingresa["motorcycles"],
-		"Bicicletas": body_ingresa["bicycles"],
-		"Altura":     body_ingresa["height"],
-		"Tipo":       body_ingresa["type"],
-		"Pisos":      body_ingresa["floor"],
-		"Sombra":     body_ingresa["shade"],
+		"IdAdministradoresFk": map[string]interface{}{"Id": 1}, // ID quemado temporal
+		"Nombres":             body_ingresa["parkingName"],
+		"Latitud":             latitude_float,
+		"Longitud":            length_float,
+		"Direccion":           body_ingresa["address"],
+		"Carros":              cars_float,
+		"Motos":               motorcycles_float,
+		"Bicicletas":          bicycles_float,
+		"Altura":              body_ingresa["height"],
+		"Tipo":                body_ingresa["type"],
+		"Pisos":               floor_float,
+		"Sombra":              shadebool,
 	}
 
 	json_parqueadero_byte, err := json.Marshal(json_parqueadero)
 	if err != nil {
-		fmt.Println("Error al convertir datos a JSON:", err)
-		c.CustomAbort(500, "Error interno al procesar datos del parqueadero")
+		c.CustomAbort(500, "Error al procesar datos del parqueadero: "+err.Error())
 		return
 	}
 
+	// Envío a servicio CRUD
 	response_parqueadero, err := services.Metodo_post("CRUD_SPY", "parqueaderos", json_parqueadero_byte)
 	if err != nil {
-		fmt.Println("Error al registrar el parqueadero:", err)
-		c.CustomAbort(500, "Error interno al registrar parqueadero")
+		c.CustomAbort(500, "Error al registrar el parqueadero: "+err.Error())
 		return
 	}
 
-	fmt.Println("Respuesta del servicio:", string(response_parqueadero))
+	parsedResponse, err := services.ProcesarJson(response_parqueadero)
+	if err != nil {
+		fmt.Println("Error al procesar la respuesta del CRUD:", err)
+		c.CustomAbort(500, "Error al convertir respuesta del CRUD")
+		return
+	}
 
-	// Respuesta exitosa
+	// Éxito
 	c.Ctx.Output.SetStatus(201)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  201,
 		"type":    "post",
 		"Message": "Parqueadero creado exitosamente",
-		"Data":    json_parqueadero,
+		"Data":    parsedResponse,
 	}
+	c.Ctx.Output.ContentType("application/json")
 	c.ServeJSON()
 }
 
