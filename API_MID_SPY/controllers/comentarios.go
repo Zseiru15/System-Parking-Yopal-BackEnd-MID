@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/astaxie/beego"
-	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
 )
 
@@ -34,70 +33,65 @@ func (c *ComentariosController) URLMapping() {
 func (c *ComentariosController) Post() {
 	var body_ingresa map[string]interface{}
 
+	// Leer y verificar el cuerpo de la solicitud
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
-		fmt.Println("Error al procesar el cuerpo de la solicitud:", err)
-		c.CustomAbort(400, "Cuerpo de la solicitud inválido")
+		c.CustomAbort(400, "Cuerpo de la solicitud inválido: "+err.Error())
 		return
 	}
 
-	jsoncontasena := map[string]interface{}{
-		"Contrasena": body_ingresa["password"],
-	}
-	json_contrasena_byte, _ := json.Marshal(jsoncontasena)
-
-	body_contrasena_byte, _ := services.Metodo_post("CRUD_SPY", "credenciales", json_contrasena_byte)
-
-	fmt.Println("Respuesta del servicio:", string(body_contrasena_byte))
-
-	body_contrasena_json, _ := services.ProcesarJson(body_contrasena_byte)
-	Id_contrasena := body_contrasena_json["data"].(map[string]interface{})["Id"]
-	fmt.Println("Id de la contraseña:", Id_contrasena)
-	Id_string := fmt.Sprintf("%v", Id_contrasena)
-	Id_contrasena_int, _ := strconv.Atoi(Id_string)
-
-	rol := body_ingresa["type"].(string)
-
-	Id_rol := services.ObtenerIDRol(rol)
-	phone := body_ingresa["phone"]
-	phone_string := fmt.Sprintf("%v", phone)
-	phone_float, _ := strconv.ParseFloat(phone_string, 64)
-
-	json_usuario := map[string]interface{}{
-		"Nombres":                      body_ingresa["firstName"],
-		"Apellidos":                    body_ingresa["lastName"],
-		"NumeroIdentificacionUsuarios": body_ingresa["documentNumber"],
-		"Telefono":                     phone_float,
-		"Email":                        body_ingresa["email"],
-		"IdContrasenaFk":               map[string]interface{}{"Id": Id_contrasena_int},
-		"IdRolesFk":                    map[string]interface{}{"Id": Id_rol},
+	// Validaciones de campos obligatorios
+	requiredFields := []string{"parkingId", "comment", "classification"}
+	for _, field := range requiredFields {
+		if val, ok := body_ingresa[field]; !ok || val == nil || val == "" {
+			c.CustomAbort(400, fmt.Sprintf("Campo obligatorio faltante o vacío: %s", field))
+			return
+		}
 	}
 
-	json_usuario_byte, _ := json.Marshal(json_usuario)
-	response_usuario, err := services.Metodo_post("CRUD_SPY", "usuarios", json_usuario_byte)
+	// Convertir clasificación a float64
+	classification := fmt.Sprintf("%v", body_ingresa["classification"])
+	classification_float, _ := strconv.ParseFloat(classification, 64)
+
+	// Convertir parkingId a int (podría llegar como float o string)
+	parkingId := fmt.Sprintf("%v", body_ingresa["parkingId"])
+	parkingId_int, _ := strconv.Atoi(parkingId)
+
+	// Construcción del JSON para enviar al CRUD
+	json_comentario := map[string]interface{}{
+		"IdUsuariosfk":        map[string]interface{}{"Id": 1}, // 🔥 Usuario quemado por ahora
+		"IdEstacionamientofk": map[string]interface{}{"Id": parkingId_int},
+		"Comentario":          body_ingresa["comment"],
+		"Calificacion":        classification_float,
+	}
+
+	json_data, err := json.Marshal(json_comentario)
 	if err != nil {
-		fmt.Println("Error al registrar el usuario:", err)
-		c.CustomAbort(500, "Error interno al registrar usuario")
+		c.CustomAbort(500, "Error al convertir datos del comentario: "+err.Error())
 		return
 	}
-	fmt.Println("Respuesta del servicio:", string(response_usuario))
 
-	token, err := security.GenerarToken(fmt.Sprintf("%v", body_ingresa["email"]))
+	// Enviar a CRUD
+	resp, err := services.Metodo_post("CRUD_SPY", "comentarios", json_data)
 	if err != nil {
-		c.CustomAbort(500, "Error generando token")
+		c.CustomAbort(500, "Error al registrar el comentario: "+err.Error())
 		return
 	}
 
-	// Respuesta JSON optimizada
+	parsedResponse, err := services.ProcesarJson(resp)
+	if err != nil {
+		c.CustomAbort(500, "Error al interpretar la respuesta del CRUD")
+		return
+	}
+
+	// Éxito
+	c.Ctx.Output.SetStatus(201)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  201,
 		"type":    "post",
-		"Message": "Creacion existosa",
-		"Data":    json_usuario,
-		"token":   token,
+		"Message": "Comentario creado exitosamente",
+		"Data":    parsedResponse,
 	}
-
-	c.Ctx.Output.ContentType("application/json") // Opcional pero recomendado
 	c.ServeJSON()
 }
 

@@ -134,7 +134,7 @@ func (c *ParqueaderosController) Post() {
 func (c *ParqueaderosController) GetOne() {
 	id_ingreso := c.Ctx.Input.Param(":id")
 
-	body, err := services.Metodo_get("CRUD_SPY", "Parqueaderos", id_ingreso)
+	body, err := services.Metodo_get("CRUD_SPY", "parqueaderos", id_ingreso)
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -173,7 +173,7 @@ func (c *ParqueaderosController) GetOne() {
 // @Failure 500 Error interno del servidor
 // @router / [get]
 func (c *ParqueaderosController) GetAll() {
-	body, err := services.Metodo_get("CRUD_SPY", "Parqueaderos", "")
+	body, err := services.Metodo_get("CRUD_SPY", "parqueaderos", "")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
