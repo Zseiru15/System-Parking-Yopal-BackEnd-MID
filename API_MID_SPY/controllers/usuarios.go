@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
@@ -98,6 +99,74 @@ func (c *UsuariosController) Post() {
 	}
 
 	c.Ctx.Output.ContentType("application/json") // Opcional pero recomendado
+	c.ServeJSON()
+}
+
+func (c *UsuariosController) Login() {
+	var body map[string]string
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
+		c.CustomAbort(400, "Cuerpo inválido: "+err.Error())
+		return
+	}
+
+	email := body["email"]
+	password := body["password"]
+
+	if email == "" || password == "" {
+		c.CustomAbort(400, "Email y contraseña son requeridos")
+		return
+	}
+
+	// Consulta al CRUD
+	resp, err := services.Metodo_get("CRUD_SPY", "usuarios/login/"+email, "")
+	if err != nil || len(resp) == 0 {
+		c.CustomAbort(500, "Error al obtener el usuario o el usuario no existe")
+		return
+	}
+
+	var respMap map[string]interface{}
+	if err := json.Unmarshal(resp, &respMap); err != nil {
+		c.CustomAbort(500, "Error procesando la respuesta del CRUD")
+		return
+	}
+
+	// Verificación segura de campos anidados
+	data, ok := respMap["data"].(map[string]interface{})
+	if !ok {
+		c.CustomAbort(500, "Respuesta inválida del CRUD: data no existe")
+		return
+	}
+
+	credenciales, ok := data["IdContrasenaFk"].(map[string]interface{})
+	if !ok {
+		c.CustomAbort(500, "Credenciales no encontradas")
+		return
+	}
+
+	passwordStoredRaw, ok := credenciales["Contrasena"]
+	if !ok {
+		c.CustomAbort(500, "Campo contraseña no disponible")
+		return
+	}
+
+	passwordStored := strings.TrimSpace(fmt.Sprintf("%v", passwordStoredRaw))
+
+	// Comparación directa (sin encriptación)
+	if password != passwordStored {
+		c.CustomAbort(401, "Contraseña incorrecta")
+		return
+	}
+
+	// Eliminar campo sensible antes de responder
+	delete(data, "IdContrasenaFk")
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Login exitoso",
+		"Data":    data,
+	}
 	c.ServeJSON()
 }
 

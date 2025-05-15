@@ -4,7 +4,6 @@ import (
 	
 )
 
-
 type UserRequest struct {
 	Nombres              string `json:"Nombres"`
 	Apellidos            string `json:"Apellidos"`

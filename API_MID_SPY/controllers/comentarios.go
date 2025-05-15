@@ -119,7 +119,7 @@ func (c *ComentariosController) GetOne() {
 // @Failure 403
 // @router / [get]
 func (c *ComentariosController) GetAll() {
-	// Obtener todos los usuarios desde el servicio externo
+	// Llamada al servicio CRUD
 	body, err := services.Metodo_get("CRUD_SPY", "comentarios", "")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
@@ -131,7 +131,7 @@ func (c *ComentariosController) GetAll() {
 		return
 	}
 
-	// Decodificar JSON
+	// Decodificación
 	var responseData map[string]interface{}
 	if err := json.Unmarshal(body, &responseData); err != nil {
 		c.Data["json"] = map[string]interface{}{
@@ -143,7 +143,7 @@ func (c *ComentariosController) GetAll() {
 		return
 	}
 
-	// Validar si "data" contiene usuarios
+	// Validación de estructura
 	commentsArray, ok := responseData["data"].([]interface{})
 	if !ok {
 		c.Data["json"] = map[string]interface{}{
@@ -155,7 +155,6 @@ func (c *ComentariosController) GetAll() {
 		return
 	}
 
-	// Procesar cada usuario en la lista
 	var comentarios []map[string]interface{}
 	for _, item := range commentsArray {
 		user, ok := item.(map[string]interface{})
@@ -163,29 +162,32 @@ func (c *ComentariosController) GetAll() {
 			continue
 		}
 
-		// Agregar usuario procesado a la lista final
+		usuarioFk, _ := user["IdUsuariosFk"].(map[string]interface{})
+		vehiculoFk, _ := user["IdVehiculosFk"].(map[string]interface{})
+		parqueaderoFk, _ := user["IdEstacionamientoFk"].(map[string]interface{})
+
 		comentarios = append(comentarios, map[string]interface{}{
-			"Foto":            user["IdUsuariosFk"].(map[string]interface{})["Imagen"],
-			"Nombres":         user["IdUsuariosFk"].(map[string]interface{})["Nombres"],
-			"Apellidos":       user["IdUsuariosFk"].(map[string]interface{})["Apellidos"],
-			"Vehiculo":        user["IdVehiculosFk"].(map[string]interface{})["Marca"],
-			"Estacionamiento": user["IdEstacionamientoFk"].(map[string]interface{})["Nombres"],
+			"Foto":            safeGet(usuarioFk, "Imagen"),
+			"Nombres":         safeGet(usuarioFk, "Nombres"),
+			"Apellidos":       safeGet(usuarioFk, "Apellidos"),
+			"Vehiculo":        safeGet(vehiculoFk, "Marca"),
+			"Estacionamiento": safeGet(parqueaderoFk, "Nombres"),
 			"Comentario":      user["Comentario"],
 			"Calificacion":    user["Calificacion"],
 			"Fecha":           user["FechaRegistro"],
 		})
 	}
 
-	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  200,
 		"Message": "Consulta exitosa",
 		"Data":    comentarios,
-		"Total":   len(comentarios), // Indica cuántos usuarios se obtuvieron
+		"Total":   len(comentarios),
 	}
 	c.ServeJSON()
 }
+
 
 // Put ...
 // @Title Put
@@ -208,4 +210,14 @@ func (c *ComentariosController) Put() {
 // @router /:id [delete]
 func (c *ComentariosController) Delete() {
 
+}
+
+func safeGet(m map[string]interface{}, key string) interface{} {
+	if m == nil {
+		return ""
+	}
+	if val, ok := m[key]; ok {
+		return val
+	}
+	return ""
 }
