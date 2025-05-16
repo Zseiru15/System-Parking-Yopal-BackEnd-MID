@@ -34,6 +34,7 @@ func init() {
 		),
 
 		beego.NSNamespace("/vehiculos",
+			beego.NSRouter("/usuario/:id", &controllers.VehiculosController{}, "get:GetByUsuario"),
 			beego.NSInclude(
 				&controllers.VehiculosController{},
 			),

@@ -54,7 +54,7 @@ func (c *VehiculosController) Post() {
 	}
 
 	// Llamar a Metodo_post para crear el vehículo en CRUD_SPY
-	response_vehiculo, err := services.Metodo_post("CRUD_SPY", "Vehiculos", json_vehiculo_byte)
+	response_vehiculo, err := services.Metodo_post("CRUD_SPY", "vehiculos", json_vehiculo_byte)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -111,7 +111,7 @@ func (c *VehiculosController) Post() {
 func (c *VehiculosController) GetOne() {
 	id_ingreso := c.Ctx.Input.Param(":id")
 
-	body, err := services.Metodo_get("CRUD_SPY", "Vehiculos", id_ingreso)
+	body, err := services.Metodo_get("CRUD_SPY", "vehiculos", id_ingreso)
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -143,6 +143,49 @@ func (c *VehiculosController) GetOne() {
 	c.ServeJSON()
 }
 
+// GetByUsuario ...
+// @Title GetByUsuario
+// @Description obtiene los vehículos registrados por un usuario específico
+// @Param	id		path 	string	true		"ID del usuario"
+// @Success 200 {object} []Vehiculos
+// @Failure 404 Usuario no tiene vehículos
+// @router /usuario/:id [get]
+func (c *VehiculosController) GetByUsuario() {
+	idUsuario := c.Ctx.Input.Param(":id")
+
+	url := "vehiculos?query=IdUsuariosFk.Id:" + idUsuario
+
+	body, err := services.Metodo_get("CRUD_SPY", url, "")
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  404,
+			"Message": "No se encontraron vehículos para el usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    responseData["data"],
+	}
+	c.ServeJSON()
+}
+
 // GetAll ...
 // @Title GetAll
 // @Description Obtiene todos los vehículos
@@ -150,7 +193,7 @@ func (c *VehiculosController) GetOne() {
 // @Failure 500 Error interno del servidor
 // @router / [get]
 func (c *VehiculosController) GetAll() {
-	body, err := services.Metodo_get("CRUD_SPY", "Vehiculos", "")
+	body, err := services.Metodo_get("CRUD_SPY", "vehiculos", "")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -211,7 +254,7 @@ func (c *VehiculosController) Delete() {
 	json_byte, _ := json.Marshal(json_nuevo)
 
 	// Llamar a Metodo_put para actualizar el estado
-	_, err := services.Metodo_put("CRUD_SPY", "Vehiculos", id_ingreso, json_byte)
+	_, err := services.Metodo_put("CRUD_SPY", "vehiculos", id_ingreso, json_byte)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
