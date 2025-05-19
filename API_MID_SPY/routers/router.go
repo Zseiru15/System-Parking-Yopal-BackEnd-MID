@@ -22,10 +22,11 @@ func init() {
 			),
 		),
 		beego.NSNamespace("/parqueaderos",
+			beego.NSRouter("/usuario/:id", &controllers.ParqueaderosController{}, "get:GetByUsuario"),
 			beego.NSInclude(
-				&controllers.ParqueaderosController{},
-			),
+				&controllers.ParqueaderosController{}),
 		),
+
 		beego.NSNamespace("/usuarios",
 			beego.NSRouter("/login", &controllers.UsuariosController{}, "post:Login"),
 			beego.NSInclude(

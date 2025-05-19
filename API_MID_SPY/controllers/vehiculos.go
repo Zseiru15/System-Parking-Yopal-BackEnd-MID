@@ -145,29 +145,41 @@ func (c *VehiculosController) GetOne() {
 
 // GetByUsuario ...
 // @Title GetByUsuario
-// @Description obtiene los vehículos registrados por un usuario específico
+// @Description Obtener vehículos asociados a un usuario
 // @Param	id		path 	string	true		"ID del usuario"
-// @Success 200 {object} []Vehiculos
-// @Failure 404 Usuario no tiene vehículos
+// @Success 200 {object} []models.Vehiculos
+// @Failure 400 El ID es inválido
+// @Failure 500 Error interno del servidor
 // @router /usuario/:id [get]
 func (c *VehiculosController) GetByUsuario() {
 	idUsuario := c.Ctx.Input.Param(":id")
 
-	url := "vehiculos?query=IdUsuariosFk.Id:" + idUsuario
-
-	body, err := services.Metodo_get("CRUD_SPY", url, "")
-	if err != nil || len(body) == 0 {
+	if idUsuario == "" {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
-			"Status":  404,
-			"Message": "No se encontraron vehículos para el usuario",
+			"Status":  400,
+			"Message": "ID de usuario no proporcionado",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	var responseData map[string]interface{}
-	if err := json.Unmarshal(body, &responseData); err != nil {
+	// 🚨 Importante: no dejes "/" al final del query
+	query := "?query=IdUsuariosFk.Id:" + idUsuario
+
+	body, err := services.Metodo_get("CRUD_SPY", "vehiculos", query)
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener vehículos del usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(body, &response); err != nil {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
 			"Status":  500,
@@ -177,11 +189,23 @@ func (c *VehiculosController) GetByUsuario() {
 		return
 	}
 
+	data, ok := response["data"].([]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Formato de datos incorrecto en respuesta",
+			"Raw":     response,
+		}
+		c.ServeJSON()
+		return
+	}
+
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  200,
-		"Message": "Consulta exitosa",
-		"Data":    responseData["data"],
+		"Message": "Vehículos del usuario",
+		"Data":    data,
 	}
 	c.ServeJSON()
 }

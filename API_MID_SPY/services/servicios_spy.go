@@ -15,6 +15,7 @@ import (
 // Orden de los servicios
 // 1. ProcesarJsonArreglos
 // 2. ProcesarJson
+// 3. ObtenerIDRol
 // 3. Metodo_post
 // 4. Metodo_get
 // 5. Metodo_put

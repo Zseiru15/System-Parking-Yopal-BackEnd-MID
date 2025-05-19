@@ -166,6 +166,62 @@ func (c *ParqueaderosController) GetOne() {
 	c.ServeJSON()
 }
 
+// GetByUsuario ...
+// @Title GetByUsuario
+// @Description Obtener parqueaderos asociados a un usuario
+// @Param	id		path 	string	true		"ID del usuario"
+// @Success 200 {object} []models.Vehiculos
+// @Failure 400 El ID es inválido
+// @Failure 500 Error interno del servidor
+// @router /usuario/:id [get]
+func (c *ParqueaderosController) GetByUsuario() {
+	idUsuario := c.Ctx.Input.Param(":id")
+
+	if idUsuario == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "ID de usuario no proporcionado",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 🚨 Importante: no dejes "/" al final del query
+	query := "?query=IdAdministradoresFk.Id:" + idUsuario
+
+	// Query param: ?query=IdAdministradorFk.Id:ID
+	body, err := services.Metodo_get("CRUD_SPY", "parqueaderos", query)
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  404,
+			"Message": "No se encontraron parqueaderos para este usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var respuesta map[string]interface{}
+	if err := json.Unmarshal(body, &respuesta); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    respuesta["data"],
+	}
+	c.ServeJSON()
+}
+
 // GetAll ...
 // @Title GetAll
 // @Description Obtiene todos los parqueaderos
