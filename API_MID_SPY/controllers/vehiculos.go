@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
@@ -31,73 +32,75 @@ func (c *VehiculosController) URLMapping() {
 func (c *VehiculosController) Post() {
 	var body_ingresa map[string]interface{}
 
+	// Leer y verificar el cuerpo de la solicitud
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Error al procesar el cuerpo de la solicitud",
-		}
-		c.ServeJSON()
+		c.CustomAbort(400, "Cuerpo de la solicitud inválido: "+err.Error())
 		return
 	}
 
-	// Convertir body_ingresa a JSON antes de enviarlo a Metodo_post
-	json_vehiculo_byte, err := json.Marshal(body_ingresa)
+	// Validaciones de campos obligatorios
+	requiredFields := []string{"Type", "vehicleBrand", "vehicleModel", "vehicleYear", "vehiclePlate", "IdUsuariosFk"}
+	for _, field := range requiredFields {
+		if val, ok := body_ingresa[field]; !ok || val == nil || val == "" {
+			c.CustomAbort(400, fmt.Sprintf("Campo obligatorio faltante o vacío: %s", field))
+			return
+		}
+	}
+
+	// Obtener ID de usuario de forma segura
+	var usuarioId interface{}
+	if idMap, ok := body_ingresa["IdUsuariosFk"].(map[string]interface{}); ok {
+		usuarioId = idMap["Id"]
+	} else {
+		c.CustomAbort(400, "Formato inválido para IdUsuariosFk")
+		return
+	}
+
+	// Armado del JSON para enviar al CRUD
+	json_vehiculos := map[string]interface{}{
+		"IdUsuariosFk": map[string]interface{}{"Id": usuarioId},
+		"Tipo":         body_ingresa["Type"],
+		"Marca":        body_ingresa["vehicleBrand"],
+		"Modelo":       body_ingresa["vehicleModel"],
+		"Año":          body_ingresa["vehicleYear"],
+		"Placa":        body_ingresa["vehiclePlate"],
+	}
+
+	// Si incluye imagen (opcional)
+	if imagen, ok := body_ingresa["Imagen"]; ok {
+		json_vehiculos["Imagen"] = imagen
+	}
+
+	json_vehiculos_byte, err := json.Marshal(json_vehiculos)
 	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al convertir datos a JSON",
-		}
-		c.ServeJSON()
+		c.CustomAbort(500, "Error al procesar datos del vehículo: "+err.Error())
 		return
 	}
 
-	// Llamar a Metodo_post para crear el vehículo en CRUD_SPY
-	response_vehiculo, err := services.Metodo_post("CRUD_SPY", "vehiculos", json_vehiculo_byte)
+	// Envío a servicio CRUD
+	response_vehiculos, err := services.Metodo_post("CRUD_SPY", "vehiculos", json_vehiculos_byte)
 	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al registrar el vehículo",
-		}
-		c.ServeJSON()
+		c.CustomAbort(500, "Error al registrar el vehículo: "+err.Error())
 		return
 	}
 
-	// Decodificar la respuesta del servicio
-	var respuesta map[string]interface{}
-	if err := json.Unmarshal(response_vehiculo, &respuesta); err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al procesar la respuesta del servidor",
-		}
-		c.ServeJSON()
+	parsedResponse, err := services.ProcesarJson(response_vehiculos)
+	if err != nil {
+		fmt.Println("Error al procesar la respuesta del CRUD:", err)
+		c.CustomAbort(500, "Error al convertir respuesta del CRUD")
 		return
 	}
 
-	// Validar si "data" está presente en la respuesta
-	data, ok := respuesta["data"].(map[string]interface{})
-	if !ok {
-		c.Data["json"] = map[string]interface{}{
-			"Success":     false,
-			"Status":      500,
-			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
-			"RawResponse": respuesta,
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Respuesta JSON optimizada
+	// Éxito
+	c.Ctx.Output.SetStatus(201)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  201,
-		"Type":    "post",
-		"Message": "Vehículo registrado exitosamente",
-		"Data":    data,
+		"type":    "post",
+		"Message": "Vehículo creado exitosamente",
+		"Data":    parsedResponse,
 	}
+	c.Ctx.Output.ContentType("application/json")
 	c.ServeJSON()
 }
 
