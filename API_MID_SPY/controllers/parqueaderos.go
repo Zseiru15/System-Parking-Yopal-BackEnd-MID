@@ -48,6 +48,19 @@ func (c *ParqueaderosController) Post() {
 		}
 	}
 
+	// Obtener ID de usuario de forma segura
+	var usuarioId interface{}
+	if idMap, ok := body_ingresa["IdAdministradoresFk"].(map[string]interface{}); ok {
+		usuarioId = idMap["Id"]
+	} else {
+		c.CustomAbort(400, "Formato inválido para IdAdministradoresFk")
+		return
+	}
+
+	number := body_ingresa["number"]
+	number_string := fmt.Sprintf("%v", number)
+	number_float, _ := strconv.ParseFloat(number_string, 64)
+
 	sombraStr := fmt.Sprintf("%v", body_ingresa["shade"])
 	shadebool := services.ObtenerSombraBoolean(sombraStr)
 
@@ -77,18 +90,23 @@ func (c *ParqueaderosController) Post() {
 
 	// Armado del JSON para enviar al CRUD
 	json_parqueadero := map[string]interface{}{
-		"IdAdministradoresFk": map[string]interface{}{"Id": 1}, // ID quemado temporal
+		"IdAdministradoresFk": usuarioId,
 		"Nombres":             body_ingresa["parkingName"],
+		"Telefono":            number_float,
 		"Latitud":             latitude_float,
 		"Longitud":            length_float,
+		"Email":               body_ingresa["email"],
 		"Direccion":           body_ingresa["address"],
 		"Carros":              cars_float,
 		"Motos":               motorcycles_float,
 		"Bicicletas":          bicycles_float,
+		"Largo":               body_ingresa["long"],
+		"Ancho":               body_ingresa["broad"],
 		"Altura":              body_ingresa["height"],
 		"Tipo":                body_ingresa["type"],
 		"Pisos":               floor_float,
 		"Sombra":              shadebool,
+		"Descripcion":         body_ingresa["description"],
 	}
 
 	json_parqueadero_byte, err := json.Marshal(json_parqueadero)
