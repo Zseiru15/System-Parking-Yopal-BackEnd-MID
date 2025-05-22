@@ -184,7 +184,7 @@ func (c *UsuariosController) GetOne() {
 	// println("PASO 1")
 	//asignacion de datos al body
 	// Obtener datos del usuario desde el servicio externo
-	body, err := services.Metodo_get("CRUD_SPY", "Usuarios", id_ingreso)
+	body, err := services.Metodo_get("CRUD_SPY", "usuarios", id_ingreso)
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -331,9 +331,34 @@ func (c *UsuariosController) GetAll() {
 // @Failure 500 Error updating user
 // @router /:id [put]
 func (c *UsuariosController) Put() {
-	id_ingreso := c.Ctx.Input.Param(":id") // Captura el ID desde la URL
+	id_ingreso := c.Ctx.Input.Param(":id")
 
-	// Decodificar el cuerpo de la solicitud
+	// Obtener datos actuales del usuario desde el CRUD
+	actualDataRaw, err := services.Metodo_get("CRUD_SPY", "usuarios", id_ingreso)
+	if err != nil || len(actualDataRaw) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  404,
+			"Message": "No se pudo obtener el usuario actual",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var actualParsed map[string]interface{}
+	if err := json.Unmarshal(actualDataRaw, &actualParsed); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al leer usuario actual",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	actualUser := actualParsed["data"].(map[string]interface{})
+
+	// Leer el nuevo cuerpo que se quiere actualizar
 	var body_actualizacion map[string]interface{}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_actualizacion); err != nil {
 		c.Data["json"] = map[string]interface{}{
@@ -345,8 +370,13 @@ func (c *UsuariosController) Put() {
 		return
 	}
 
-	// Convertir body_actualizacion a JSON antes de enviarlo a Metodo_put
-	json_usuario_byte, err := json.Marshal(body_actualizacion)
+	// Actualizar solo los campos enviados (no sobrescribir vacíos)
+	for key, value := range body_actualizacion {
+		actualUser[key] = value
+	}
+
+	// Convertir a JSON para el PUT
+	json_usuario_byte, err := json.Marshal(actualUser)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -357,8 +387,8 @@ func (c *UsuariosController) Put() {
 		return
 	}
 
-	// Llamar a Metodo_put para actualizar el usuario en CRUD_SPY
-	response_usuario, err := services.Metodo_put("CRUD_SPY", "Usuarios", id_ingreso, json_usuario_byte)
+	// Enviar al CRUD_SPY
+	response_usuario, err := services.Metodo_put("CRUD_SPY", "usuarios", id_ingreso, json_usuario_byte)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -369,41 +399,23 @@ func (c *UsuariosController) Put() {
 		return
 	}
 
-	// Decodificar la respuesta del servicio
-	var temporal_usuario map[string]interface{}
-	if err := json.Unmarshal(response_usuario, &temporal_usuario); err != nil {
+	var result map[string]interface{}
+	if err := json.Unmarshal(response_usuario, &result); err != nil {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
 			"Status":  500,
-			"Message": "Error al procesar la respuesta del servidor",
+			"Message": "Error al procesar la respuesta del CRUD",
 		}
 		c.ServeJSON()
 		return
 	}
 
-	// 📌 IMPRIMIR LA RESPUESTA COMPLETA
-	fmt.Println("Respuesta del servidor CRUD_SPY:", temporal_usuario)
-
-	// Validar si "data" está presente en la respuesta
-	data, ok := temporal_usuario["data"].(map[string]interface{})
-	if !ok {
-		c.Data["json"] = map[string]interface{}{
-			"Success":     false,
-			"Status":      500,
-			"Message":     "Estructura de datos incorrecta en la respuesta del servidor",
-			"RawResponse": temporal_usuario, // 🔍 Incluir la respuesta completa para depuración
-		}
-		c.ServeJSON()
-		return
-	}
-
-	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
-		"Succes":  true,
+		"Success": true,
 		"Status":  200,
 		"type":    "put",
-		"Message": "Actualización exitosa",
-		"Data":    data,
+		"Message": "Usuario actualizado correctamente",
+		"Data":    result["data"],
 	}
 	c.ServeJSON()
 }
