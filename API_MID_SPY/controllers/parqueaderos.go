@@ -207,7 +207,7 @@ func (c *ParqueaderosController) GetByUsuario() {
 	}
 
 	// 🚨 Importante: no dejes "/" al final del query
-	query := "?query=IdAdministradoresFk.Id:" + idUsuario
+	query := "?query=IdAdministradoresFk.Id:" + idUsuario + "&limit=0"
 
 	// Query param: ?query=IdAdministradorFk.Id:ID
 	body, err := services.Metodo_get("CRUD_SPY", "parqueaderos", query)

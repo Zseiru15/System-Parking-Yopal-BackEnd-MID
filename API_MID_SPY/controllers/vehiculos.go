@@ -168,7 +168,7 @@ func (c *VehiculosController) GetByUsuario() {
 	}
 
 	// 🚨 Importante: no dejes "/" al final del query
-	query := "?query=IdUsuariosFk.Id:" + idUsuario
+	query := "?query=IdUsuariosFk.Id:" + idUsuario + "&limit=0"
 
 	body, err := services.Metodo_get("CRUD_SPY", "vehiculos", query)
 	if err != nil || len(body) == 0 {
