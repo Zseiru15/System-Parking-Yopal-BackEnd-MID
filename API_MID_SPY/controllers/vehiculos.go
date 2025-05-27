@@ -252,6 +252,105 @@ func (c *VehiculosController) GetAll() {
 	c.ServeJSON()
 }
 
+// Put ...
+// @Title Update
+// @Description update Vehiculos
+// @Param	id		path 	string	true		"The id you want to update"
+// @Param	body	body 	models.Vehiculos	true		"body for Vehiculos content"
+// @Success 200 {object} models.Vehiculos
+// @Failure 400 Invalid ID
+// @Failure 500 Error updating user
+// @router /:id [put]
+func (c *VehiculosController) Put() {
+	id_ingreso := c.Ctx.Input.Param(":id")
+
+	// Obtener datos actuales del vehiculo desde el CRUD
+	actualDataRaw, err := services.Metodo_get("CRUD_SPY", "vehiculos", id_ingreso)
+	if err != nil || len(actualDataRaw) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  404,
+			"Message": "No se pudo obtener el vehiculo actual",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var actualParsed map[string]interface{}
+	if err := json.Unmarshal(actualDataRaw, &actualParsed); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al leer vehiculo actual",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	actualUser := actualParsed["data"].(map[string]interface{})
+
+	// Leer el nuevo cuerpo que se quiere actualizar
+	var body_actualizacion map[string]interface{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_actualizacion); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Error al procesar el cuerpo de la solicitud",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Actualizar solo los campos enviados (no sobrescribir vacíos)
+	for key, value := range body_actualizacion {
+		actualUser[key] = value
+	}
+
+	// Convertir a JSON para el PUT
+	json_usuario_byte, err := json.Marshal(actualUser)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al convertir datos a JSON",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Enviar al CRUD_SPY
+	response_usuario, err := services.Metodo_put("CRUD_SPY", "vehiculos", id_ingreso, json_usuario_byte)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al actualizar el vehiculo",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(response_usuario, &result); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del CRUD",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"type":    "put",
+		"Message": "Vehiculo actualizado correctamente",
+		"Data":    result["data"],
+	}
+	c.ServeJSON()
+}
+
 // Delete ...
 // @Title Disable
 // @Description Cambia el estado de un Vehículo a false en lugar de eliminarlo
