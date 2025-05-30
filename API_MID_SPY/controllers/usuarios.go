@@ -214,13 +214,14 @@ func (c *UsuariosController) GetOne() {
 	// Extraer y validar solo los datos necesarios
 	// El JSON que esperas es un array de objetos
 	usuario := map[string]interface{}{
-		"Id":                   userData["data"].(map[string]interface{})["Id"],
-		"Nombres":              userData["data"].(map[string]interface{})["Nombres"],
-		"Apellidos":            userData["data"].(map[string]interface{})["Apellidos"],
-		"NumeroIdentificacion": userData["data"].(map[string]interface{})["NumeroIdentificacionUsuarios"],
-		"Email":                userData["data"].(map[string]interface{})["Email"],
-		"Telefono":             userData["data"].(map[string]interface{})["Telefono"],
-		"IdRolesFk":            userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
+		"Id":                         userData["data"].(map[string]interface{})["Id"],
+		"Nombres":                    userData["data"].(map[string]interface{})["Nombres"],
+		"Apellidos":                  userData["data"].(map[string]interface{})["Apellidos"],
+		"NumeroIdentificacion":       userData["data"].(map[string]interface{})["NumeroIdentificacionUsuarios"],
+		"Email":                      userData["data"].(map[string]interface{})["Email"],
+		"Telefono":                   userData["data"].(map[string]interface{})["Telefono"],
+		"IdRolesFk":                  userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
+		"IdEstacionamientoTrabajoFk": userData["data"].(map[string]interface{})["IdEstacionamientoTrabajoFk"].(map[string]interface{})["Id"],
 	}
 	// jsonData2, _ := json.MarshalIndent(usuario, "", "  ")
 	// println("PASO 2.2")
@@ -239,6 +240,69 @@ func (c *UsuariosController) GetOne() {
 	c.ServeJSON()
 }
 
+// GetByTrabajadores ...
+// @Title GetByTrabajadores
+// @Description Obtener vehículos asociados a un usuario
+// @Param	id		path 	string	true		"ID del usuario"
+// @Success 200 {object} []models.Vehiculos
+// @Failure 400 El ID es inválido
+// @Failure 500 Error interno del servidor
+// @router /usuario/:id [get]
+func (c *UsuariosController) GetByTrabajadores() {
+	idUsuario := c.Ctx.Input.Param(":id")
+
+	if idUsuario == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "ID de usuario no proporcionado",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// 🚨 Importante: no dejes "/" al final del query
+	query := "?query=IdEstacionamientoTrabajoFk.Id:" + idUsuario + "&limit=0"
+
+	body, err := services.Metodo_get("CRUD_SPY", "usuarios", query)
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener Trabajadores del estacionamiento",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(body, &response); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar respuesta del servidor",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Validar y renombrar campo si existe
+	var data []interface{}
+	if items, ok := response["data"].([]interface{}); ok {
+		data = items
+	} else {
+		data = []interface{}{}
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Trabajadores del estacionamiento",
+		"Data":    data, // D mayúscula
+	}
+	c.ServeJSON()
+}
+
 // GetAll ...
 // @Title GetAll
 // @Description Obtiene todos los usuarios
@@ -247,7 +311,7 @@ func (c *UsuariosController) GetOne() {
 // @router / [get]
 func (c *UsuariosController) GetAll() {
 	// Obtener todos los usuarios desde el servicio externo
-	body, err := services.Metodo_get("CRUD_SPY", "Usuarios", "")
+	body, err := services.Metodo_get("CRUD_SPY", "usuarios", "")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -298,15 +362,24 @@ func (c *UsuariosController) GetAll() {
 			}
 		}
 
+		// Validar y extraer `IdEstacionamientoTrabajoFK` si existe
+		idEstacionamientoTrabajoFk := 0
+		if idTrabajo, ok := user["IdEstacionamientoTrabajoFk"].(map[string]interface{}); ok {
+			if id, ok := idTrabajo["Id"].(float64); ok {
+				idEstacionamientoTrabajoFk = int(id)
+			}
+		}
+
 		// Agregar usuario procesado a la lista final
 		usuarios = append(usuarios, map[string]interface{}{
-			"Id":                   user["Id"],
-			"Nombres":              user["Nombres"],
-			"Apellidos":            user["Apellidos"],
-			"NumeroIdentificacion": user["NumeroIdentificacionUsuarios"],
-			"Email":                user["Email"],
-			"Telefono":             user["Telefono"],
-			"IdRolesFk":            idRolesFk,
+			"Id":                         user["Id"],
+			"Nombres":                    user["Nombres"],
+			"Apellidos":                  user["Apellidos"],
+			"NumeroIdentificacion":       user["NumeroIdentificacionUsuarios"],
+			"Email":                      user["Email"],
+			"Telefono":                   user["Telefono"],
+			"IdRolesFk":                  idRolesFk,
+			"IdEstacionamientoTrabajoFk": idEstacionamientoTrabajoFk,
 		})
 	}
 

@@ -29,6 +29,7 @@ func init() {
 
 		beego.NSNamespace("/usuarios",
 			beego.NSRouter("/login", &controllers.UsuariosController{}, "post:Login"),
+			beego.NSRouter("/trabajador/:id", &controllers.UsuariosController{}, "get:GetByTrabajadores"),
 			beego.NSInclude(
 				&controllers.UsuariosController{},
 			),

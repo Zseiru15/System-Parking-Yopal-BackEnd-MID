@@ -241,6 +241,15 @@ func init() {
             Filters: nil,
             Params: nil})
 
+    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:UsuariosController"],
+        beego.ControllerComments{
+            Method: "GetByTrabajadores",
+            Router: "/usuario/:id",
+            AllowHTTPMethods: []string{"get"},
+            MethodParams: param.Make(),
+            Filters: nil,
+            Params: nil})
+
     beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:VehiculosController"],
         beego.ControllerComments{
             Method: "Post",
