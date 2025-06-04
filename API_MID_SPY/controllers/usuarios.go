@@ -240,6 +240,66 @@ func (c *UsuariosController) GetOne() {
 	c.ServeJSON()
 }
 
+// GetUsuarioPorIdentificacion ...
+// @Title GetUsuarioPorIdentificacion
+// @Description Consulta un usuario por su número de identificación
+// @Param	identificacion	path 	string	true		"Número de identificación del usuario"
+// @Success 200 {object} models.Usuarios
+// @Failure 404 Usuario no encontrado
+// @router /identificacion/:identificacion [get]
+func (c *UsuariosController) GetUsuarioPorIdentificacion() {
+	identificacion := c.Ctx.Input.Param(":identificacion")
+	if identificacion == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Número de identificación requerido",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	endpoint := "usuarios/identificacion/" + identificacion
+	body, err := services.Metodo_get("CRUD_SPY", endpoint, "")
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  404,
+			"Message": "Usuario no encontrado o error al consultar",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(body, &response); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del CRUD",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Extrae directamente "data"
+	if response["Success"] == true || response["success"] == true {
+		c.Data["json"] = map[string]interface{}{
+			"Success": true,
+			"Status":  200,
+			"Message": "Usuario encontrado",
+			"Data":    response["Data"],
+		}
+	} else {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  404,
+			"Message": "Usuario no encontrado en CRUD",
+		}
+	}
+	c.ServeJSON()
+}
+
 // GetByTrabajadores ...
 // @Title GetByTrabajadores
 // @Description Obtener vehículos asociados a un usuario

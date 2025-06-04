@@ -427,3 +427,35 @@ func (c *ParqueaderosController) Delete() {
 	}
 	c.ServeJSON()
 }
+
+func (c *ParqueaderosController) DesactivarParqueadero() {
+	id := c.Ctx.Input.Param(":id")
+	if id == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "ID no proporcionado",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Enviar petición PUT al CRUD
+	_, err := services.Metodo_put("CRUD_SPY", "/parqueaderos/desactivar", id, nil)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al desactivar parqueadero",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Parqueadero desactivado correctamente",
+	}
+	c.ServeJSON()
+}

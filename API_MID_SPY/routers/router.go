@@ -23,6 +23,7 @@ func init() {
 		),
 		beego.NSNamespace("/parqueaderos",
 			beego.NSRouter("/usuario/:id", &controllers.ParqueaderosController{}, "get:GetByUsuario"),
+			beego.NSRouter("/desactivar/:id", &controllers.ParqueaderosController{}, "put:DesactivarParqueadero"),
 			beego.NSInclude(
 				&controllers.ParqueaderosController{}),
 		),
@@ -30,6 +31,7 @@ func init() {
 		beego.NSNamespace("/usuarios",
 			beego.NSRouter("/login", &controllers.UsuariosController{}, "post:Login"),
 			beego.NSRouter("/trabajador/:id", &controllers.UsuariosController{}, "get:GetByTrabajadores"),
+			beego.NSRouter("/identificacion/:identificacion", &controllers.UsuariosController{}, "get:GetUsuarioPorIdentificacion"),
 			beego.NSInclude(
 				&controllers.UsuariosController{},
 			),
@@ -37,6 +39,7 @@ func init() {
 
 		beego.NSNamespace("/vehiculos",
 			beego.NSRouter("/usuario/:id", &controllers.VehiculosController{}, "get:GetByUsuario"),
+			beego.NSRouter("/desactivar/:id", &controllers.VehiculosController{}, "put:DesactivarVehiculo"),
 			beego.NSInclude(
 				&controllers.VehiculosController{},
 			),
