@@ -143,6 +143,75 @@ func (c *ParqueaderosController) Post() {
 	c.ServeJSON()
 }
 
+// PostPromocion ...
+// @Title CrearPromocion
+// @Description Crear una nueva promoción
+// @Param	body	body	interface{}	true	"Datos de la promoción"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 cuerpo inválido
+// @Failure 500 error interno
+// @router /promociones [post]
+func (c *ParqueaderosController) PostPromocion() {
+	idParqueadero := c.Ctx.Input.Param(":idParqueadero")
+	if idParqueadero == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "ID del parqueadero requerido",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var promocion map[string]interface{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &promocion); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "Cuerpo inválido: " + err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// ⚠️ Inyectar ID del parqueadero manualmente
+	promocion["IdEstacionamientosFk"] = map[string]interface{}{"Id": idParqueadero}
+
+	// Convertir a JSON
+	jsonData, _ := json.Marshal(promocion)
+
+	// Enviar al CRUD
+	res, err := services.Metodo_post("CRUD_SPY", "promociones", jsonData)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al crear promoción en el CRUD: " + err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(res, &result); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al interpretar respuesta del CRUD",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  201,
+		"Message": "Promoción creada correctamente",
+		"Data":    result["data"],
+	}
+	c.ServeJSON()
+}
+
 // GetOne ...
 // @Title GetOne
 // @Description get Parqueaderos by id
@@ -237,6 +306,57 @@ func (c *ParqueaderosController) GetByUsuario() {
 		"Status":  200,
 		"Message": "Consulta exitosa",
 		"Data":    respuesta["data"],
+	}
+	c.ServeJSON()
+}
+
+// GetPromocionesPorParqueadero ...
+// @Title GetPromocionesPorParqueadero
+// @Description obtiene todas las promociones de un parqueadero específico
+// @Param	idParqueadero	path	int	true	"ID del parqueadero"
+// @Success 200 {object} []interface{}
+// @Failure 404 No se encontraron promociones
+// @router /promociones/:idParqueadero [get]
+func (c *ParqueaderosController) GetPromocionesPorParqueadero() {
+	idParqueadero := c.Ctx.Input.Param(":idParqueadero")
+	if idParqueadero == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "ID del parqueadero requerido",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Llama al nuevo endpoint del CRUD directamente
+	response, err := services.Metodo_get("CRUD_SPY", "promociones/parqueadero", idParqueadero)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener promociones del CRUD",
+			"Error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(response, &result); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al parsear la respuesta del CRUD",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Data":    result["Data"],
 	}
 	c.ServeJSON()
 }
