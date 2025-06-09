@@ -363,6 +363,96 @@ func (c *UsuariosController) GetByTrabajadores() {
 	c.ServeJSON()
 }
 
+// GetParqueaderosPorEmpleado ...
+// @Title GetParqueaderosPorEmpleado
+// @Description Obtiene la lista de parqueaderos donde trabaja un usuario (por campo IdEstacionamientoTrabajoFk)
+// @Param	id		path 	string	true		"ID del usuario"
+// @Success 200 {object} []map[string]interface{}
+// @Failure 400 ID inválido
+// @Failure 500 Error interno
+// @router /parqueaderos-empleado/:id [get]
+func (c *ParqueaderosController) GetParqueaderosPorEmpleado() {
+	idUsuario := c.Ctx.Input.Param(":id")
+	if idUsuario == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  400,
+			"Message": "ID de usuario no proporcionado",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Buscar el usuario por ID para obtener el IdEstacionamientoTrabajoFk
+	bodyUsuario, err := services.Metodo_get("CRUD_SPY", "usuarios", idUsuario)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener el usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var usuario map[string]interface{}
+	if err := json.Unmarshal(bodyUsuario, &usuario); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar el usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	idEstacionamiento := ""
+	if fk, ok := usuario["IdEstacionamientoTrabajoFk"].(map[string]interface{}); ok {
+		idEstacionamiento = fmt.Sprintf("%v", fk["Id"])
+	}
+
+	if idEstacionamiento == "" {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  404,
+			"Message": "El usuario no tiene parqueadero asignado",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	// Obtener información del parqueadero
+	bodyParqueadero, err := services.Metodo_get("CRUD_SPY", "parqueaderos", idEstacionamiento)
+	if err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener parqueadero",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var parqueadero map[string]interface{}
+	if err := json.Unmarshal(bodyParqueadero, &parqueadero); err != nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al parsear parqueadero",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Parqueadero encontrado",
+		"Data":    parqueadero["data"],
+	}
+	c.ServeJSON()
+}
+
 // GetAll ...
 // @Title GetAll
 // @Description Obtiene todos los usuarios
