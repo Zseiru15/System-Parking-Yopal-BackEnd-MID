@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
@@ -152,62 +153,85 @@ func (c *ParqueaderosController) Post() {
 // @Failure 500 error interno
 // @router /promociones [post]
 func (c *ParqueaderosController) PostPromocion() {
-	idParqueadero := c.Ctx.Input.Param(":idParqueadero")
-	if idParqueadero == "" {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "ID del parqueadero requerido",
-		}
-		c.ServeJSON()
+	idParqueaderoStr := c.Ctx.Input.Param(":idParqueadero")
+	if idParqueaderoStr == "" {
+		c.CustomAbort(400, "ID del parqueadero requerido")
 		return
 	}
 
-	var promocion map[string]interface{}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &promocion); err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  400,
-			"Message": "Cuerpo inválido: " + err.Error(),
-		}
-		c.ServeJSON()
+	idParqueadero, err := strconv.Atoi(idParqueaderoStr)
+	if err != nil {
+		c.CustomAbort(400, "ID del parqueadero inválido: "+err.Error())
 		return
 	}
 
-	// ⚠️ Inyectar ID del parqueadero manualmente
-	promocion["IdEstacionamientosFk"] = map[string]interface{}{"Id": idParqueadero}
+	var input map[string]interface{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &input); err != nil {
+		c.CustomAbort(400, "Cuerpo inválido: "+err.Error())
+		return
+	}
 
-	// Convertir a JSON
-	jsonData, _ := json.Marshal(promocion)
+	// ✅ Validación y conversión de campos
+	parseFloat := func(key string) float64 {
+		if val, ok := input[key]; ok {
+			str := fmt.Sprintf("%v", val)
+			f, err := strconv.ParseFloat(str, 64)
+			if err == nil {
+				return f
+			}
+		}
+		return 0
+	}
 
-	// Enviar al CRUD
+	fechaStr := fmt.Sprintf("%v", input["FechaFinal"])
+	fechaFinal, err := time.Parse(time.RFC3339, fechaStr)
+	if err != nil {
+		c.CustomAbort(400, "Formato inválido para FechaFinal. Usa formato ISO: "+err.Error())
+		return
+	}
+
+	// ✅ Armado de estructura para enviar al CRUD
+	promocion := map[string]interface{}{
+		"IdEstacionamientosFk": map[string]interface{}{"Id": idParqueadero},
+		"Descripcion":          input["Descripcion"],
+		"Estado":               true,
+		"FechaFinal":           fechaFinal,
+		"Carros":               parseFloat("Carros"),
+		"ValorCarros":          parseFloat("ValorCarros"),
+		"DescuentoCarros":      parseFloat("DescuentoCarros"),
+		"Motos":                parseFloat("Motos"),
+		"ValorMotos":           parseFloat("ValorMotos"),
+		"DescuentoMotos":       parseFloat("DescuentoMotos"),
+		"Bicicletas":           parseFloat("Bicicletas"),
+		"ValorBicicletas":      parseFloat("ValorBicicletas"),
+		"DescuentoBicicletas":  parseFloat("DescuentoBicicletas"),
+	}
+
+	jsonData, err := json.Marshal(promocion)
+	if err != nil {
+		c.CustomAbort(500, "Error al generar JSON de promoción: "+err.Error())
+		return
+	}
+
+	// 🛰️ Enviar al CRUD
 	res, err := services.Metodo_post("CRUD_SPY", "promociones", jsonData)
 	if err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al crear promoción en el CRUD: " + err.Error(),
-		}
-		c.ServeJSON()
+		c.CustomAbort(500, "Error al crear promoción en el CRUD: "+err.Error())
 		return
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal(res, &result); err != nil {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Error al interpretar respuesta del CRUD",
-		}
-		c.ServeJSON()
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(res, &parsed); err != nil {
+		c.CustomAbort(500, "Error al interpretar respuesta del CRUD: "+err.Error())
 		return
 	}
 
+	c.Ctx.Output.SetStatus(201)
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  201,
 		"Message": "Promoción creada correctamente",
-		"Data":    result["data"],
+		"Data":    parsed["data"],
 	}
 	c.ServeJSON()
 }
@@ -329,7 +353,7 @@ func (c *ParqueaderosController) GetPromocionesPorParqueadero() {
 		return
 	}
 
-	// Llama al nuevo endpoint del CRUD directamente
+	// Obtener promociones activas e inactivas por parqueadero
 	response, err := services.Metodo_get("CRUD_SPY", "promociones/parqueadero", idParqueadero)
 	if err != nil {
 		c.Data["json"] = map[string]interface{}{
@@ -353,10 +377,50 @@ func (c *ParqueaderosController) GetPromocionesPorParqueadero() {
 		return
 	}
 
+	promociones, ok := result["Data"].([]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Formato inesperado en la respuesta del CRUD",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	now := time.Now()
+	for _, p := range promociones {
+		promo, ok := p.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		estado, _ := promo["Estado"].(bool)
+		idFloat, _ := promo["Id"].(float64)
+		id := fmt.Sprintf("%.0f", idFloat) // convertir ID a string sin decimales
+
+		fechaStr := fmt.Sprintf("%v", promo["FechaFinal"])
+		fechaFin, err := time.Parse(time.RFC3339, fechaStr)
+		if err != nil {
+			continue
+		}
+
+		if estado && now.After(fechaFin) {
+			// ⚠️ Desactivar promoción
+			body, _ := json.Marshal(map[string]interface{}{"Estado": false})
+			_, err := services.Metodo_put("CRUD_SPY", "promociones", id, body)
+			if err != nil {
+				fmt.Printf("⚠️ No se pudo desactivar la promoción ID %s: %s\n", id, err.Error())
+			} else {
+				promo["Estado"] = false
+			}
+		}
+	}
+
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  200,
-		"Data":    result["Data"],
+		"Data":    promociones,
 	}
 	c.ServeJSON()
 }
