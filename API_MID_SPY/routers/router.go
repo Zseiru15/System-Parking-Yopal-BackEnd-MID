@@ -23,6 +23,7 @@ func init() {
 		),
 		beego.NSNamespace("/parqueaderos",
 			beego.NSRouter("/usuario/:id", &controllers.ParqueaderosController{}, "get:GetByUsuario"),
+			beego.NSRouter("/parqueadero-empleado/:id", &controllers.ParqueaderosController{}, "get:GetParqueaderoDelEmpleado"),
 			beego.NSRouter("/promociones/:idParqueadero", &controllers.ParqueaderosController{}, "get:GetPromocionesPorParqueadero"),
 			beego.NSRouter("/registrarPromocion/:idParqueadero", &controllers.ParqueaderosController{}, "post:PostPromocion"),
 			beego.NSRouter("/desactivar/:id", &controllers.ParqueaderosController{}, "put:DesactivarParqueadero"),
