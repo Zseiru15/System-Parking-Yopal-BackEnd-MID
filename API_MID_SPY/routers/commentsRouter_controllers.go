@@ -190,16 +190,7 @@ func init() {
     beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"],
         beego.ControllerComments{
             Method: "GetParqueaderoDelEmpleado",
-            Router: "/parqueadero-empleado/:id",
-            AllowHTTPMethods: []string{"get"},
-            MethodParams: param.Make(),
-            Filters: nil,
-            Params: nil})
-
-    beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"] = append(beego.GlobalControllerRouter["github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/controllers:ParqueaderosController"],
-        beego.ControllerComments{
-            Method: "GetParqueaderosPorEmpleado",
-            Router: "/parqueaderos-empleado/:id",
+            Router: "/empleo/:id",
             AllowHTTPMethods: []string{"get"},
             MethodParams: param.Make(),
             Filters: nil,

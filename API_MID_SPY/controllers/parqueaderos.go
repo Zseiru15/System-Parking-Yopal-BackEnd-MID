@@ -325,13 +325,19 @@ func (c *ParqueaderosController) GetByUsuario() {
 		return
 	}
 
+	data, ok := respuesta["data"].([]interface{})
+	if !ok || data == nil {
+		data = []interface{}{}
+	}
+
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  200,
 		"Message": "Consulta exitosa",
-		"Data":    respuesta["data"],
+		"Data":    data,
 	}
 	c.ServeJSON()
+
 }
 
 // GetParqueaderoDelEmpleado ...
@@ -341,7 +347,7 @@ func (c *ParqueaderosController) GetByUsuario() {
 // @Success 200 {object} map[string]interface{}
 // @Failure 404 No se encontró parqueadero asignado
 // @Failure 500 Error interno del servidor
-// @router /parqueadero-empleado/:id [get]
+// @router /empleo/:id [get]
 func (c *ParqueaderosController) GetParqueaderoDelEmpleado() {
 	idUsuario := c.Ctx.Input.Param(":id")
 
@@ -379,8 +385,19 @@ func (c *ParqueaderosController) GetParqueaderoDelEmpleado() {
 		return
 	}
 
+	dataUsuario, ok := usuario["data"].(map[string]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al acceder a los datos del usuario",
+		}
+		c.ServeJSON()
+		return
+	}
+
 	idParqueadero := ""
-	if estacionamiento, ok := usuario["IdEstacionamientoTrabajoFk"].(map[string]interface{}); ok {
+	if estacionamiento, ok := dataUsuario["IdEstacionamientoTrabajoFk"].(map[string]interface{}); ok {
 		idParqueadero = fmt.Sprintf("%v", estacionamiento["Id"])
 	}
 
@@ -418,11 +435,22 @@ func (c *ParqueaderosController) GetParqueaderoDelEmpleado() {
 		return
 	}
 
+	dataParqueadero, ok := parqueadero["data"].(map[string]interface{})
+	if !ok || dataParqueadero == nil {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  404,
+			"Message": "No se encontró el parqueadero",
+		}
+		c.ServeJSON()
+		return
+	}
+
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  200,
 		"Message": "Parqueadero del empleado obtenido correctamente",
-		"Data":    parqueadero["data"],
+		"Data":    dataParqueadero,
 	}
 	c.ServeJSON()
 }

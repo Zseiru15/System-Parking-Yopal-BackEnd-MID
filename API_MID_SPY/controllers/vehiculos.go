@@ -193,15 +193,8 @@ func (c *VehiculosController) GetByUsuario() {
 	}
 
 	data, ok := response["data"].([]interface{})
-	if !ok {
-		c.Data["json"] = map[string]interface{}{
-			"Success": false,
-			"Status":  500,
-			"Message": "Formato de datos incorrecto en respuesta",
-			"Raw":     response,
-		}
-		c.ServeJSON()
-		return
+	if !ok || data == nil {
+		data = []interface{}{}
 	}
 
 	c.Data["json"] = map[string]interface{}{
@@ -211,6 +204,7 @@ func (c *VehiculosController) GetByUsuario() {
 		"Data":    data,
 	}
 	c.ServeJSON()
+
 }
 
 // GetAll ...
