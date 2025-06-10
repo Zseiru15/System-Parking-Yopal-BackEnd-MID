@@ -553,7 +553,7 @@ func (c *ParqueaderosController) GetPromocionesPorParqueadero() {
 // @Failure 500 Error interno del servidor
 // @router / [get]
 func (c *ParqueaderosController) GetAll() {
-	body, err := services.Metodo_get("CRUD_SPY", "parqueaderos", "")
+	body, err := services.Metodo_get("CRUD_SPY", "parqueaderos", "?limit=0")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,

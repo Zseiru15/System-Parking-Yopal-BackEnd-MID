@@ -120,7 +120,7 @@ func (c *ComentariosController) GetOne() {
 // @router / [get]
 func (c *ComentariosController) GetAll() {
 	// Llamada al servicio CRUD
-	body, err := services.Metodo_get("CRUD_SPY", "comentarios", "")
+	body, err := services.Metodo_get("CRUD_SPY", "comentarios", "?limit=0")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -187,7 +187,6 @@ func (c *ComentariosController) GetAll() {
 	}
 	c.ServeJSON()
 }
-
 
 // Put ...
 // @Title Put

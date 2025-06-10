@@ -214,7 +214,7 @@ func (c *VehiculosController) GetByUsuario() {
 // @Failure 500 Error interno del servidor
 // @router / [get]
 func (c *VehiculosController) GetAll() {
-	body, err := services.Metodo_get("CRUD_SPY", "vehiculos", "")
+	body, err := services.Metodo_get("CRUD_SPY", "vehiculos", "?limit=0")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,

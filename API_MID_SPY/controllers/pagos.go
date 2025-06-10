@@ -62,7 +62,7 @@ func (c *PagosController) GetOne() {
 // @Failure 403
 // @router / [get]
 func (c *PagosController) GetAll() {
-	body, err := services.Metodo_get("CRUD_SPY", "Pagos", "")
+	body, err := services.Metodo_get("CRUD_SPY", "Pagos", "?limit=0")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,

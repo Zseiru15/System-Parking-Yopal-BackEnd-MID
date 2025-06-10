@@ -260,7 +260,7 @@ func (c *UsuariosController) GetUsuarioPorIdentificacion() {
 	}
 
 	endpoint := "usuarios/identificacion/" + identificacion
-	body, err := services.Metodo_get("CRUD_SPY", endpoint, "")
+	body, err := services.Metodo_get("CRUD_SPY", endpoint, "?limit=0")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -371,7 +371,7 @@ func (c *UsuariosController) GetByTrabajadores() {
 // @router / [get]
 func (c *UsuariosController) GetAll() {
 	// Obtener todos los usuarios desde el servicio externo
-	body, err := services.Metodo_get("CRUD_SPY", "usuarios", "")
+	body, err := services.Metodo_get("CRUD_SPY", "usuarios", "?limit=0")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
