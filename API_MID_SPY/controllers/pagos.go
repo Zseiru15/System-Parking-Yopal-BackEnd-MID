@@ -49,6 +49,84 @@ func (c *PagosController) GetOne() {
 	fmt.Println("GetOne Vacio")
 }
 
+// Obtener pagos por ID de parqueadero
+func (c *PagosController) GetByEstacionamientoId() {
+	id := c.Ctx.Input.Param(":id")
+	query := fmt.Sprintf("?query=IdEstacionamientosFk:", id, "?limit=0")
+
+	body, err := services.Metodo_get("CRUD_SPY", "pagos", query)
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener pagos por parqueadero",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		fmt.Println("RESPUESTA NO JSON:", string(body)) // debug útil
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    responseData["data"],
+	}
+	c.ServeJSON()
+}
+
+// Obtener pagos por ID de usuario
+func (c *PagosController) GetByUsuarioId() {
+	id := c.Ctx.Input.Param(":id")
+	query := fmt.Sprintf("?query=IdUsuariosFk:", id, "?limit=0")
+
+	body, err := services.Metodo_get("CRUD_SPY", "/pagos", query)
+	if err != nil || len(body) == 0 {
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al obtener pagos por usuario",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+
+	var responseData map[string]interface{}
+	if err := json.Unmarshal(body, &responseData); err != nil {
+		fmt.Println("RESPUESTA NO JSON:", string(body)) // debug útil
+		c.Data["json"] = map[string]interface{}{
+			"Success": false,
+			"Status":  500,
+			"Message": "Error al procesar la respuesta del servidor",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"Success": true,
+		"Status":  200,
+		"Message": "Consulta exitosa",
+		"Data":    responseData["data"],
+	}
+	c.ServeJSON()
+}
+
 // GetAll ...
 // @Title GetAll
 // @Description get Pagos
@@ -62,7 +140,7 @@ func (c *PagosController) GetOne() {
 // @Failure 403
 // @router / [get]
 func (c *PagosController) GetAll() {
-	body, err := services.Metodo_get("CRUD_SPY", "Pagos", "?limit=0")
+	body, err := services.Metodo_get("CRUD_SPY", "pagos", "?limit=0")
 	if err != nil || len(body) == 0 {
 		c.Data["json"] = map[string]interface{}{
 			"Success": false,
@@ -106,14 +184,16 @@ func (c *PagosController) GetAll() {
 
 		// Agregar usuario procesado a la lista final
 		pagos = append(pagos, map[string]interface{}{
-			"Id":            payments["Id"],
-			"PayPalOrdenID": payments["PayPalOrderID"],
-			"Amount":        payments["Amount"],
-			"Currency":      payments["Currency"],
-			"Status":        payments["Status"],
-			"PayerEmail":    payments["PayerEmail"],
-			"ReceiverEmail": payments["ReceiverEmail"],
-			"CreatedAt":     payments["CreatedAt"],
+			"Id":                   payments["Id"],
+			"IdUsuariosFk":         payments["IdUsuariosFk"],
+			"IdEstacionamientosFk": payments["IdEstacionamientosFk"],
+			"PayPalOrdenID":        payments["PayPalOrderID"],
+			"Amount":               payments["Amount"],
+			"Currency":             payments["Currency"],
+			"Status":               payments["Status"],
+			"PayerEmail":           payments["PayerEmail"],
+			"ReceiverEmail":        payments["ReceiverEmail"],
+			"CreatedAt":            payments["CreatedAt"],
 		})
 	}
 
@@ -150,7 +230,6 @@ func (c *PagosController) Put() {
 func (c *PagosController) Delete() {
 	fmt.Println("Delete Vacio")
 }
-
 
 func GetPayPalAccessToken() (string, error) {
 	clientID := os.Getenv("AQvAF1VdHXee7eTPVYy515ni8mkeB698nAP3vom3ZBuBLTHEaci2e9ySj1_HMFniutieNbi-8Y0RRxCi")
