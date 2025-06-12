@@ -46,32 +46,26 @@ func (c *PagosController) Post() {
 		return
 	}
 
-	// Validación básica
+	// Validación mínima
 	if body_ingresa["Amount"] == nil || body_ingresa["PayPalOrderID"] == nil {
 		c.CustomAbort(400, "Faltan datos obligatorios en el pago")
 		return
 	}
 
-	// Asignar Status activo
+	// Agregar campos automáticos
 	body_ingresa["Status"] = true
+	body_ingresa["FechaFin"] = time.Now().AddDate(0, 1, 0).Format(time.RFC3339)
 
-	// Calcular la fecha de expiración (+1 mes)
-	now := time.Now()
-	fechaFin := now.AddDate(0, 1, 0).Format(time.RFC3339)
-	body_ingresa["FechaFin"] = fechaFin
-
-	// Serializar a JSON para enviar al CRUD
+	// Serializar para enviar al CRUD
 	json_pago, err := json.Marshal(body_ingresa)
 	if err != nil {
-		fmt.Println("Error al serializar el pago:", err)
-		c.CustomAbort(500, "Error al preparar datos del pago")
+		c.CustomAbort(500, "Error al serializar datos")
 		return
 	}
 
 	// Enviar al CRUD
 	response_crud, err := services.Metodo_post("CRUD_SPY", "pagos", json_pago)
 	if err != nil {
-		fmt.Println("Error al enviar el pago al CRUD:", err)
 		c.CustomAbort(500, "No se pudo registrar el pago en el CRUD")
 		return
 	}
@@ -79,12 +73,11 @@ func (c *PagosController) Post() {
 	// Procesar respuesta
 	var resultado map[string]interface{}
 	if err := json.Unmarshal(response_crud, &resultado); err != nil {
-		fmt.Println("Error al interpretar respuesta del CRUD:", err)
 		c.CustomAbort(500, "Respuesta del CRUD no válida")
 		return
 	}
 
-	// Respuesta final
+	// Respuesta al cliente
 	c.Data["json"] = map[string]interface{}{
 		"success": true,
 		"status":  201,
