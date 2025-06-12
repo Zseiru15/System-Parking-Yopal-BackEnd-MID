@@ -17,6 +17,7 @@ func init() {
 			),
 		),
 		beego.NSNamespace("/pagos",
+			beego.NSRouter("/membresia-activa/:id_usuario", &controllers.PagosController{}, "get:GetMembresiaActiva"),
 			beego.NSRouter("/parqueadero/:id", &controllers.PagosController{}, "get:GetByEstacionamientoId"),
 			beego.NSRouter("/usuario/:id", &controllers.PagosController{}, "get:GetByUsuarioId"),
 			beego.NSInclude(

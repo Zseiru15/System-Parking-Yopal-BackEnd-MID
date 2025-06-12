@@ -4,6 +4,7 @@ go 1.23.1
 
 require (
 	github.com/astaxie/beego v1.12.3
+	github.com/beego/beego v1.12.14
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/smartystreets/goconvey v1.8.1
 )
@@ -15,6 +16,7 @@ require (
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.48.0 // indirect
