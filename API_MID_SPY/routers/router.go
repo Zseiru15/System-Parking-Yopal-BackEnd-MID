@@ -38,6 +38,7 @@ func init() {
 			beego.NSRouter("/login", &controllers.UsuariosController{}, "post:Login"),
 			beego.NSRouter("/trabajador/:id", &controllers.UsuariosController{}, "get:GetByTrabajadores"),
 			beego.NSRouter("/identificacion/:identificacion", &controllers.UsuariosController{}, "get:GetUsuarioPorIdentificacion"),
+			beego.NSRouter("/actualizar-membresia", &controllers.UsuariosController{}, "put:ActualizarMembresia"),
 			beego.NSInclude(
 				&controllers.UsuariosController{},
 			),

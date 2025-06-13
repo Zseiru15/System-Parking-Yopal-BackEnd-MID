@@ -1,9 +1,11 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -40,52 +42,103 @@ func (c *PagosController) URLMapping() {
 func (c *PagosController) Post() {
 	var body_ingresa map[string]interface{}
 
+	// 1. Validar cuerpo JSON
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
-		fmt.Println("Error al procesar el cuerpo de la solicitud:", err)
 		c.CustomAbort(400, "Cuerpo de la solicitud inválido")
 		return
 	}
 
-	// Validación mínima
-	if body_ingresa["Amount"] == nil || body_ingresa["PayPalOrderID"] == nil {
+	// 2. Validar campos obligatorios
+	if body_ingresa["Amount"] == nil || body_ingresa["PayPalOrderID"] == nil || body_ingresa["IdUsuariosFk"] == nil {
 		c.CustomAbort(400, "Faltan datos obligatorios en el pago")
 		return
 	}
 
-	// Agregar campos automáticos
-	body_ingresa["Status"] = true
-	body_ingresa["FechaFin"] = time.Now().AddDate(0, 1, 0).Format(time.RFC3339)
-
-	// Serializar para enviar al CRUD
-	json_pago, err := json.Marshal(body_ingresa)
+	// 3. Validar si el usuario ya tiene membresía activa
+	idUsuario := fmt.Sprintf("%v", body_ingresa["IdUsuariosFk"])
+	respUsuario, err := services.Metodo_get("CRUD_SPY", "usuarios", idUsuario)
 	if err != nil {
-		c.CustomAbort(500, "Error al serializar datos")
+		c.CustomAbort(500, "No se pudo obtener información del usuario")
 		return
 	}
 
-	// Enviar al CRUD
+	var usuario map[string]interface{}
+	if err := json.Unmarshal(respUsuario, &usuario); err != nil {
+		c.CustomAbort(500, "Error al leer datos del usuario")
+		return
+	}
+
+	if usuario["MembresiaActiva"] == true {
+		finStr, ok := usuario["FinMembresia"].(string)
+		if ok {
+			finTime, err := time.Parse(time.RFC3339, finStr)
+			if err == nil && finTime.After(time.Now()) {
+				c.CustomAbort(409, "El usuario ya tiene una membresía activa")
+				return
+			}
+		}
+	}
+
+	// 4. Agregar campos automáticos
+	body_ingresa["Status"] = "COMPLETED"
+	body_ingresa["FechaFin"] = time.Now().AddDate(0, 1, 0).Format(time.RFC3339)
+
+	// 5. Enviar al CRUD
+	json_pago, _ := json.Marshal(body_ingresa)
 	response_crud, err := services.Metodo_post("CRUD_SPY", "pagos", json_pago)
 	if err != nil {
 		c.CustomAbort(500, "No se pudo registrar el pago en el CRUD")
 		return
 	}
 
-	// Procesar respuesta
-	var resultado map[string]interface{}
-	if err := json.Unmarshal(response_crud, &resultado); err != nil {
-		c.CustomAbort(500, "Respuesta del CRUD no válida")
+	// 6. Actualizar usuario
+	actualizacion := map[string]interface{}{
+		"MembresiaActiva": true,
+		"InicioMembresia": time.Now().Format(time.RFC3339),
+		"FinMembresia":    time.Now().AddDate(0, 1, 0).Format(time.RFC3339),
+	}
+	json_usuario, _ := json.Marshal(actualizacion)
+	_, err = services.Metodo_put("CRUD_SPY", "usuarios", idUsuario, json_usuario)
+	if err != nil {
+		c.CustomAbort(500, "El pago fue exitoso pero no se pudo activar la membresía")
 		return
 	}
 
-	// Respuesta al cliente
+	// 7. Respuesta final
 	c.Data["json"] = map[string]interface{}{
 		"success": true,
 		"status":  201,
-		"type":    "post",
 		"message": "Pago creado correctamente con membresía activa por 1 mes",
-		"data":    resultado["data"],
+		"data":    json.RawMessage(response_crud),
 	}
 	c.ServeJSON()
+}
+
+func RegistrarPagoMembresia(w http.ResponseWriter, r *http.Request) {
+	var pago models.Pagos
+	if err := json.NewDecoder(r.Body).Decode(&pago); err != nil {
+		http.Error(w, "Datos de pago inválidos", 400)
+		return
+	}
+
+	// Llama al CRUD
+	url := fmt.Sprintf("%s/pagos", os.Getenv("URL_CRUD"))
+	payload, _ := json.Marshal(pago)
+
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	if err != nil {
+		http.Error(w, "No se pudo enviar al CRUD", 500)
+		return
+	}
+	defer resp.Body.Close()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
 }
 
 // GetOne ...
@@ -286,7 +339,6 @@ func (c *PagosController) GetAll() {
 			"CreatedAt":            payments["CreatedAt"],
 		})
 	}
-
 	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
