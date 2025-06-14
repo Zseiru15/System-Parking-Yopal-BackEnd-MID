@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/astaxie/beego/plugins/cors"
 	_ "github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/routers"
+	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services" // ✅ Import correct
 
 	"github.com/astaxie/beego"
 )
@@ -22,5 +23,6 @@ func main() {
 		beego.BConfig.WebConfig.DirectoryIndex = true
 		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
 	}
+	services.StartScheduler() // ✅ Inicia el scheduler al correr el MID
 	beego.Run()
 }

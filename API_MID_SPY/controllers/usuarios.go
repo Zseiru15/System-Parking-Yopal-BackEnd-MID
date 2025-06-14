@@ -1,10 +1,14 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/astaxie/beego"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/security"
@@ -222,6 +226,7 @@ func (c *UsuariosController) GetOne() {
 		"Telefono":                   userData["data"].(map[string]interface{})["Telefono"],
 		"IdRolesFk":                  userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
 		"IdEstacionamientoTrabajoFk": userData["data"].(map[string]interface{})["IdEstacionamientoTrabajoFk"].(map[string]interface{})["Id"],
+		"Membresia":                         userData["data"].(map[string]interface{})["Membresia"],
 	}
 	// jsonData2, _ := json.MarshalIndent(usuario, "", "  ")
 	// println("PASO 2.2")
@@ -549,6 +554,155 @@ func (c *UsuariosController) Put() {
 		"type":    "put",
 		"Message": "Usuario actualizado correctamente",
 		"Data":    result["data"],
+	}
+	c.ServeJSON()
+}
+
+// @Title ActivarMembresia
+// @Description Activa la membresía de un usuario por 1 mes
+// @Param	body		body 	UsuariosControllerRequest	true	"Id del usuario a activar membresía"
+// @Success 200 {string} success
+// @Failure 400 body is invalid
+// @Failure 502 CRUD error
+// @router /activar-membresia [post]
+func (c *UsuariosController) ActivarMembresia() {
+	type ActivarMembresiaRequest struct {
+		IdUsuario int `json:"IdUsuario"`
+	}
+	var req ActivarMembresiaRequest
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		c.CustomAbort(400, "JSON inválido: "+err.Error())
+	}
+
+	// Obtener datos actuales del usuario
+	urlGet := fmt.Sprintf("http://localhost:8081/v1/usuarios/%d", req.IdUsuario)
+	respGet, err := http.Get(urlGet)
+	if err != nil || respGet.StatusCode != 200 {
+		c.CustomAbort(502, "Error al obtener el usuario desde el CRUD")
+	}
+	defer respGet.Body.Close()
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(respGet.Body).Decode(&result); err != nil {
+		c.CustomAbort(500, "Error al interpretar la respuesta del CRUD")
+	}
+
+	data, ok := result["data"].(map[string]interface{})
+	if !ok {
+		c.CustomAbort(500, "Respuesta inesperada al obtener usuario")
+	}
+
+	// Preparar campos de membresía
+	now := time.Now().UTC()
+	fin := now.AddDate(0, 1, 0)
+
+	data["Membresia"] = true
+	data["InicioMembresia"] = now.Format(time.RFC3339)
+	data["FinMembresia"] = fin.Format(time.RFC3339)
+
+	// Convertimos de nuevo a JSON
+	updateJson, err := json.Marshal(data)
+	if err != nil {
+		c.CustomAbort(500, "Error al convertir datos para actualización")
+	}
+
+	// Realizamos el PUT
+	urlPut := fmt.Sprintf("http://localhost:8081/v1/usuarios/%d", req.IdUsuario)
+	reqPut, err := http.NewRequest(http.MethodPut, urlPut, bytes.NewBuffer(updateJson))
+	reqPut.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	respPut, err := client.Do(reqPut)
+	if err != nil || respPut.StatusCode >= 300 {
+		bodyBytes, _ := io.ReadAll(respPut.Body)
+		c.CustomAbort(502, fmt.Sprintf("Error al actualizar en CRUD: %s", string(bodyBytes)))
+	}
+
+	// Todo bien
+	c.Data["json"] = map[string]interface{}{
+		"success":      true,
+		"message":      "Membresía activada correctamente",
+		"fecha_inicio": now.Format("2006-01-02"),
+		"fecha_fin":    fin.Format("2006-01-02"),
+	}
+	c.ServeJSON()
+}
+
+func (c *UsuariosController) DesactivarMembresiasVencidas() {
+	// Obtener todos los usuarios
+	resp, err := http.Get("http://localhost:8081/v1/usuarios?limit=0")
+	if err != nil || resp.StatusCode != 200 {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Error al obtener usuarios del CRUD",
+		}
+		c.ServeJSON()
+		return
+	}
+	defer resp.Body.Close()
+
+	var data map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Error al decodificar respuesta",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	usuarios, ok := data["data"].([]interface{})
+	if !ok {
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Formato de datos inválido",
+		}
+		c.ServeJSON()
+		return
+	}
+
+	hoy := time.Now()
+	actualizados := 0
+
+	for _, u := range usuarios {
+		usuario := u.(map[string]interface{})
+
+		if usuario["Membresia"] == true {
+			finStr, ok := usuario["FinMembresia"].(string)
+			if !ok || finStr == "" {
+				continue
+			}
+			fin, err := time.Parse(time.RFC3339, finStr)
+			if err != nil {
+				continue
+			}
+			if fin.Before(hoy) {
+				// Desactivar membresía
+				id := int(usuario["Id"].(float64))
+
+				updatePayload := map[string]interface{}{
+					"Membresia": false,
+				}
+				body, _ := json.Marshal(updatePayload)
+				url := fmt.Sprintf("http://localhost:8081/v1/usuarios/%d", id)
+
+				reqPut, _ := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
+				reqPut.Header.Set("Content-Type", "application/json")
+				client := &http.Client{}
+				resPut, err := client.Do(reqPut)
+				if err == nil && resPut.StatusCode < 300 {
+					actualizados++
+				}
+			}
+		}
+	}
+
+	c.Data["json"] = map[string]interface{}{
+		"success": true,
+		"message": fmt.Sprintf("Membresías vencidas desactivadas: %d", actualizados),
 	}
 	c.ServeJSON()
 }

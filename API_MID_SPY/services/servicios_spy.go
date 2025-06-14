@@ -8,8 +8,10 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/astaxie/beego"
+	"github.com/robfig/cron"
 )
 
 // Orden de los servicios
@@ -237,4 +239,96 @@ func Metodo_delete(nombre_servicio, endpoint, parametro string) ([]byte, error) 
 	}
 	fmt.Println("Respuesta de la API:", string(body))
 	return body, nil
+}
+
+// Desactiva automáticamente las membresías vencidas
+func DesactivarMembresiasVencidas() {
+	resp, err := http.Get("http://localhost:8081/v1/usuarios?limit=0")
+	if err != nil || resp.StatusCode != 200 {
+		fmt.Println("❌ Error al obtener usuarios:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	var data map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		fmt.Println("❌ Error al decodificar usuarios:", err)
+		return
+	}
+
+	usuarios, ok := data["data"].([]interface{})
+	if !ok {
+		fmt.Println("❌ Formato inválido")
+		return
+	}
+
+	hoy := time.Now()
+	actualizados := 0
+
+	for _, u := range usuarios {
+		usuario := u.(map[string]interface{})
+
+		if usuario["Membresia"] == true {
+			finStr, ok := usuario["FinMembresia"].(string)
+			if !ok || finStr == "" {
+				continue
+			}
+			fin, err := time.Parse(time.RFC3339, finStr)
+			if err != nil {
+				continue
+			}
+			if fin.Before(hoy) {
+				// GET usuario completo por ID
+				id := int(usuario["Id"].(float64))
+				getURL := fmt.Sprintf("http://localhost:8081/v1/usuarios/%d", id)
+
+				getResp, err := http.Get(getURL)
+				if err != nil || getResp.StatusCode != 200 {
+					fmt.Println("❌ No se pudo obtener usuario ID:", id)
+					continue
+				}
+				defer getResp.Body.Close()
+
+				var userResp map[string]interface{}
+				if err := json.NewDecoder(getResp.Body).Decode(&userResp); err != nil {
+					fmt.Println("❌ Error al decodificar usuario ID:", id)
+					continue
+				}
+
+				usuarioCompleto := userResp["data"].(map[string]interface{})
+				usuarioCompleto["Membresia"] = false
+				usuarioCompleto["InicioMembresia"] = nil
+				usuarioCompleto["FinMembresia"] = nil
+
+				body, _ := json.Marshal(usuarioCompleto)
+				putURL := fmt.Sprintf("http://localhost:8081/v1/usuarios/%d", id)
+
+				reqPut, _ := http.NewRequest(http.MethodPut, putURL, bytes.NewBuffer(body))
+				reqPut.Header.Set("Content-Type", "application/json")
+				client := &http.Client{}
+				resPut, err := client.Do(reqPut)
+				if err == nil && resPut.StatusCode < 300 {
+					actualizados++
+					fmt.Println("✅ Usuario actualizado ID:", id)
+				} else {
+					fmt.Println("❌ Error actualizando ID:", id)
+				}
+			}
+		}
+	}
+
+	fmt.Println("✅ Total membresías desactivadas:", actualizados)
+}
+
+// StartScheduler inicia la verificación automática de membresías vencidas
+func StartScheduler() {
+	c := cron.New()
+	// Se ejecuta cada día a las 2 AM
+	// Cada 1 minuto (para pruebas)
+	c.AddFunc("0 3 * * *", func() {
+		fmt.Println("⏰ Ejecutando desactivación de membresías vencidas - 3AM")
+		DesactivarMembresiasVencidas()
+	})
+	c.Start()
+	fmt.Println("🕓 Scheduler de membresías iniciado")
 }
