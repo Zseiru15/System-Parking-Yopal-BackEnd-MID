@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -13,8 +12,6 @@ import (
 	"time"
 
 	"github.com/astaxie/beego"
-	"github.com/beego/beego/orm"
-	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/models"
 	"github.com/sena_2824182/System-Parking-Yopal-BackEnd-MID/API_MID_SPY/services"
 )
 
@@ -40,105 +37,74 @@ func (c *PagosController) URLMapping() {
 // @Failure 403 body is empty
 // @router / [post]
 func (c *PagosController) Post() {
-	var body_ingresa map[string]interface{}
-
-	// 1. Validar cuerpo JSON
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body_ingresa); err != nil {
-		c.CustomAbort(400, "Cuerpo de la solicitud inválido")
-		return
+	var pago struct {
+		IdUsuariosFk         int     `json:"IdUsuariosFk"`
+		IdEstacionamientosFk *int    `json:"IdEstacionamientosFk"`
+		PayPalOrderID        string  `json:"PayPalOrderID"`
+		Amount               float64 `json:"Amount"`
+		Currency             string  `json:"Currency"`
+		Status               bool    `json:"Status"`
 	}
 
-	// 2. Validar campos obligatorios
-	if body_ingresa["Amount"] == nil || body_ingresa["PayPalOrderID"] == nil || body_ingresa["IdUsuariosFk"] == nil {
-		c.CustomAbort(400, "Faltan datos obligatorios en el pago")
-		return
-	}
-
-	// 3. Validar si el usuario ya tiene membresía activa
-	idUsuario := fmt.Sprintf("%v", body_ingresa["IdUsuariosFk"])
-	respUsuario, err := services.Metodo_get("CRUD_SPY", "usuarios", idUsuario)
-	if err != nil {
-		c.CustomAbort(500, "No se pudo obtener información del usuario")
-		return
-	}
-
-	var usuario map[string]interface{}
-	if err := json.Unmarshal(respUsuario, &usuario); err != nil {
-		c.CustomAbort(500, "Error al leer datos del usuario")
-		return
-	}
-
-	if usuario["MembresiaActiva"] == true {
-		finStr, ok := usuario["FinMembresia"].(string)
-		if ok {
-			finTime, err := time.Parse(time.RFC3339, finStr)
-			if err == nil && finTime.After(time.Now()) {
-				c.CustomAbort(409, "El usuario ya tiene una membresía activa")
-				return
-			}
+	// 1. Leer y parsear el request del cliente (Angular)
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &pago); err != nil {
+		c.Ctx.Output.SetStatus(400)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Error al parsear el cuerpo del request",
+			"error":   err.Error(),
 		}
-	}
-
-	// 4. Agregar campos automáticos
-	body_ingresa["Status"] = "COMPLETED"
-	body_ingresa["FechaFin"] = time.Now().AddDate(0, 1, 0).Format(time.RFC3339)
-
-	// 5. Enviar al CRUD
-	json_pago, _ := json.Marshal(body_ingresa)
-	response_crud, err := services.Metodo_post("CRUD_SPY", "pagos", json_pago)
-	if err != nil {
-		c.CustomAbort(500, "No se pudo registrar el pago en el CRUD")
+		c.ServeJSON()
 		return
 	}
 
-	// 6. Actualizar usuario
-	actualizacion := map[string]interface{}{
-		"MembresiaActiva": true,
-		"InicioMembresia": time.Now().Format(time.RFC3339),
-		"FinMembresia":    time.Now().AddDate(0, 1, 0).Format(time.RFC3339),
+	// 2. Reestructurar los datos para el CRUD con objetos anidados
+	payload := map[string]interface{}{
+		"IdUsuariosFk":  map[string]int{"Id": pago.IdUsuariosFk},
+		"PayPalOrderID": pago.PayPalOrderID,
+		"Amount":        pago.Amount,
+		"Currency":      pago.Currency,
+		"Status":        pago.Status,
 	}
-	json_usuario, _ := json.Marshal(actualizacion)
-	_, err = services.Metodo_put("CRUD_SPY", "usuarios", idUsuario, json_usuario)
+
+	// Si hay parqueadero, incluirlo
+	if pago.IdEstacionamientosFk != nil {
+		payload["IdEstacionamientosFk"] = map[string]int{"Id": *pago.IdEstacionamientosFk}
+	}
+
+	// 3. Enviar al CRUD
+	bodyBytes, _ := json.Marshal(payload)
+	fmt.Println("📤 Enviando al CRUD:", string(bodyBytes))
+
+	resp, err := http.Post("http://localhost:8081/v1/pagos", "application/json", bytes.NewBuffer(bodyBytes))
 	if err != nil {
-		c.CustomAbort(500, "El pago fue exitoso pero no se pudo activar la membresía")
-		return
-	}
-
-	// 7. Respuesta final
-	c.Data["json"] = map[string]interface{}{
-		"success": true,
-		"status":  201,
-		"message": "Pago creado correctamente con membresía activa por 1 mes",
-		"data":    json.RawMessage(response_crud),
-	}
-	c.ServeJSON()
-}
-
-func RegistrarPagoMembresia(w http.ResponseWriter, r *http.Request) {
-	var pago models.Pagos
-	if err := json.NewDecoder(r.Body).Decode(&pago); err != nil {
-		http.Error(w, "Datos de pago inválidos", 400)
-		return
-	}
-
-	// Llama al CRUD
-	url := fmt.Sprintf("%s/pagos", os.Getenv("URL_CRUD"))
-	payload, _ := json.Marshal(pago)
-
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-
-	if err != nil {
-		http.Error(w, "No se pudo enviar al CRUD", 500)
+		c.Ctx.Output.SetStatus(502)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Error al conectarse con el CRUD",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
 		return
 	}
 	defer resp.Body.Close()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	// 4. Leer la respuesta del CRUD y retornarla al cliente
+	var responseBody map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
+		c.Ctx.Output.SetStatus(500)
+		c.Data["json"] = map[string]interface{}{
+			"success": false,
+			"message": "Error al decodificar respuesta del CRUD",
+			"error":   err.Error(),
+		}
+		c.ServeJSON()
+		return
+	}
+
+	c.Ctx.Output.SetStatus(resp.StatusCode)
+	c.Data["json"] = responseBody
+	c.ServeJSON()
 }
 
 // GetOne ...
@@ -450,26 +416,4 @@ func (c *PagosController) GetMembresiaActiva() {
 	// Si no encontró membresía activa válida
 	c.Data["json"] = map[string]interface{}{"membresia_activa": false}
 	c.ServeJSON()
-}
-
-// CRON automático: Inactivar membresías vencidas
-func InactivarMembresiasVencidas() {
-	o := orm.NewOrm()
-	var pagos []models.Pagos
-	_, err := o.QueryTable("pagos").Filter("Tipo", "membresía").Filter("Status", true).All(&pagos)
-	if err != nil {
-		fmt.Println("Error al consultar pagos para cron:", err)
-		return
-	}
-
-	now := time.Now()
-	for _, pago := range pagos {
-		fechaFin := pago.CreatedAt.AddDate(0, 1, 0) // 1 mes desde creado
-		if fechaFin.Before(now) {
-			pago.Status = false
-			if _, err := o.Update(&pago, "Status"); err != nil {
-				fmt.Println("Error al actualizar membresía vencida:", err)
-			}
-		}
-	}
 }

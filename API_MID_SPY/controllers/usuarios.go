@@ -553,46 +553,6 @@ func (c *UsuariosController) Put() {
 	c.ServeJSON()
 }
 
-func (c *UsuariosController) ActualizarMembresia() {
-	var body map[string]interface{}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &body); err != nil {
-		c.CustomAbort(400, "Error en el cuerpo de la solicitud: "+err.Error())
-		return
-	}
-
-	// Validación básica
-	id, ok := body["Id"]
-	if !ok {
-		c.CustomAbort(400, "Falta el campo 'Id' del usuario")
-		return
-	}
-
-	// Quitar el campo ID del cuerpo de actualización
-	delete(body, "Id")
-
-	// Serializar el body
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		c.CustomAbort(500, "Error al serializar datos de membresía: "+err.Error())
-		return
-	}
-
-	// Enviar PUT al CRUD
-	idStr := fmt.Sprintf("%v", id)
-	_, err = services.Metodo_put("CRUD_SPY", "usuarios", idStr, jsonBody)
-	if err != nil {
-		c.CustomAbort(500, "Error al actualizar la membresía del usuario: "+err.Error())
-		return
-	}
-
-	// Respuesta exitosa
-	c.Data["json"] = map[string]interface{}{
-		"success": true,
-		"message": "Membresía actualizada correctamente",
-	}
-	c.ServeJSON()
-}
-
 // Delete ...
 // @Title Disable
 // @Description Cambia el estado de Usuarios a false en lugar de eliminarlo

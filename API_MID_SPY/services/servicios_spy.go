@@ -111,7 +111,6 @@ func Metodo_post(host string, endpoint string, data []byte) ([]byte, error) {
 		// log.Fatal(err)
 	}
 
-
 	return body, nil
 }
 
@@ -239,4 +238,3 @@ func Metodo_delete(nombre_servicio, endpoint, parametro string) ([]byte, error) 
 	fmt.Println("Respuesta de la API:", string(body))
 	return body, nil
 }
-
