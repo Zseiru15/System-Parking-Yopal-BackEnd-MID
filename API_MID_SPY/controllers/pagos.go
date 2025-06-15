@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -44,9 +45,9 @@ func (c *PagosController) Post() {
 		Amount               float64 `json:"Amount"`
 		Currency             string  `json:"Currency"`
 		Status               bool    `json:"Status"`
+		TipoPago             string  `json:"TipoPago"` // "membresia", "reserva", etc.
 	}
 
-	// 1. Leer y parsear el request del cliente (Angular)
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &pago); err != nil {
 		c.Ctx.Output.SetStatus(400)
 		c.Data["json"] = map[string]interface{}{
@@ -58,21 +59,19 @@ func (c *PagosController) Post() {
 		return
 	}
 
-	// 2. Reestructurar los datos para el CRUD con objetos anidados
 	payload := map[string]interface{}{
 		"IdUsuariosFk":  map[string]int{"Id": pago.IdUsuariosFk},
 		"PayPalOrderID": pago.PayPalOrderID,
 		"Amount":        pago.Amount,
 		"Currency":      pago.Currency,
 		"Status":        pago.Status,
+		"TipoPago":      pago.TipoPago,
 	}
 
-	// Si hay parqueadero, incluirlo
 	if pago.IdEstacionamientosFk != nil {
 		payload["IdEstacionamientosFk"] = map[string]int{"Id": *pago.IdEstacionamientosFk}
 	}
 
-	// 3. Enviar al CRUD
 	bodyBytes, _ := json.Marshal(payload)
 	fmt.Println("📤 Enviando al CRUD:", string(bodyBytes))
 
@@ -89,7 +88,6 @@ func (c *PagosController) Post() {
 	}
 	defer resp.Body.Close()
 
-	// 4. Leer la respuesta del CRUD y retornarla al cliente
 	var responseBody map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&responseBody); err != nil {
 		c.Ctx.Output.SetStatus(500)
@@ -100,6 +98,33 @@ func (c *PagosController) Post() {
 		}
 		c.ServeJSON()
 		return
+	}
+
+	// ✅ Activar membresía solo si corresponde
+	if pago.TipoPago == "membresia" {
+		activarBody := map[string]int{"IdUsuario": pago.IdUsuariosFk}
+		activarBytes, _ := json.Marshal(activarBody)
+
+		respAct, err := http.Post("http://localhost:8082/v1/usuarios/activar-membresia", "application/json", bytes.NewBuffer(activarBytes))
+		if err != nil || respAct.StatusCode >= 300 {
+			body, _ := io.ReadAll(respAct.Body)
+			c.Ctx.Output.SetStatus(502)
+			c.Data["json"] = map[string]interface{}{
+				"success": false,
+				"message": "El pago fue registrado pero falló la activación de la membresía",
+				"error":   err.Error(),
+				"detalle": string(body),
+			}
+			c.ServeJSON()
+			return
+		}
+		defer respAct.Body.Close()
+
+		var actResp map[string]interface{}
+		if err := json.NewDecoder(respAct.Body).Decode(&actResp); err == nil {
+			// Agregar info de activación al response principal
+			responseBody["activacion_membresia"] = actResp
+		}
 	}
 
 	c.Ctx.Output.SetStatus(resp.StatusCode)
@@ -296,13 +321,12 @@ func (c *PagosController) GetAll() {
 			"Id":                   payments["Id"],
 			"IdUsuariosFk":         payments["IdUsuariosFk"],
 			"IdEstacionamientosFk": payments["IdEstacionamientosFk"],
-			"PayPalOrdenID":        payments["PayPalOrderID"],
+			"PayPalOrderID":        payments["PayPalOrderID"],
 			"Amount":               payments["Amount"],
 			"Currency":             payments["Currency"],
+			"FechaPago":            payments["FechaPago"],
 			"Status":               payments["Status"],
-			"PayerEmail":           payments["PayerEmail"],
-			"ReceiverEmail":        payments["ReceiverEmail"],
-			"CreatedAt":            payments["CreatedAt"],
+			"TipoPago":             payments["TipoPago"],
 		})
 	}
 	// Respuesta JSON optimizada
