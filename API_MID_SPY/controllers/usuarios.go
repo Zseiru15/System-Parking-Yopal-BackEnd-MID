@@ -60,14 +60,14 @@ func (c *UsuariosController) Post() {
 	Id_string := fmt.Sprintf("%v", Id_contrasena)
 	Id_contrasena_int, _ := strconv.Atoi(Id_string)
 
-	rol := body_ingresa["type"].(string)
+	Id_rol := 1
 
-	Id_rol := services.ObtenerIDRol(rol)
 	phone := body_ingresa["phone"]
 	phone_string := fmt.Sprintf("%v", phone)
 	phone_float, _ := strconv.ParseFloat(phone_string, 64)
 
 	json_usuario := map[string]interface{}{
+		"Id":                           body_ingresa["Id"],
 		"Nombres":                      body_ingresa["firstName"],
 		"Apellidos":                    body_ingresa["lastName"],
 		"NumeroIdentificacionUsuarios": body_ingresa["documentNumber"],
@@ -86,23 +86,31 @@ func (c *UsuariosController) Post() {
 	}
 	fmt.Println("Respuesta del servicio:", string(response_usuario))
 
+	var response_usuario_map map[string]interface{}
+	if err := json.Unmarshal(response_usuario, &response_usuario_map); err != nil {
+		fmt.Println("Error al procesar respuesta del CRUD:", err)
+		c.CustomAbort(500, "Error al procesar la respuesta del CRUD")
+		return
+	}
+
+	usuario_creado := response_usuario_map["data"].(map[string]interface{})
+
 	token, err := security.GenerarToken(fmt.Sprintf("%v", body_ingresa["email"]))
 	if err != nil {
 		c.CustomAbort(500, "Error generando token")
 		return
 	}
 
-	// Respuesta JSON optimizada
 	c.Data["json"] = map[string]interface{}{
 		"Success": true,
 		"Status":  201,
 		"type":    "post",
 		"Message": "Creacion existosa",
-		"Data":    json_usuario,
+		"Data":    usuario_creado, // Usamos el usuario con el ID real retornado
 		"token":   token,
 	}
 
-	c.Ctx.Output.ContentType("application/json") // Opcional pero recomendado
+	c.Ctx.Output.ContentType("application/json")
 	c.ServeJSON()
 }
 
@@ -226,7 +234,7 @@ func (c *UsuariosController) GetOne() {
 		"Telefono":                   userData["data"].(map[string]interface{})["Telefono"],
 		"IdRolesFk":                  userData["data"].(map[string]interface{})["IdRolesFk"].(map[string]interface{})["Id"],
 		"IdEstacionamientoTrabajoFk": userData["data"].(map[string]interface{})["IdEstacionamientoTrabajoFk"].(map[string]interface{})["Id"],
-		"Membresia":                         userData["data"].(map[string]interface{})["Membresia"],
+		"Membresia":                  userData["data"].(map[string]interface{})["Membresia"],
 	}
 	// jsonData2, _ := json.MarshalIndent(usuario, "", "  ")
 	// println("PASO 2.2")

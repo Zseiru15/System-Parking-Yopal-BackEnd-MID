@@ -11,6 +11,8 @@ func init() {
 	ns := beego.NewNamespace("/v1",
 		// Rutas de autenticación (públicas)
 		// Rutas protegidas
+		beego.NSRouter("/actividades-usuario/:id", &controllers.ActividadController{}, "get:GetActividadesPorUsuario"),
+		
 		beego.NSNamespace("/comentarios",
 			beego.NSInclude(
 				&controllers.ComentariosController{},
